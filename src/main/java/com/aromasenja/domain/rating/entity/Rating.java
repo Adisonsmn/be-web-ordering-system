@@ -22,7 +22,7 @@ public class Rating {
     private UUID ratingId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false)
+    @JoinColumn(name = "client_id", nullable = true)
     private Client client;
 
     @ManyToOne(fetch = FetchType.LAZY)

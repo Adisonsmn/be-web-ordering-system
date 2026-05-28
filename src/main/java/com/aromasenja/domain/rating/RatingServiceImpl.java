@@ -39,21 +39,28 @@ public class RatingServiceImpl implements RatingService {
 
     @Override
     public RatingResponse submitRating(CreateRatingRequest request, UserPrincipal currentUser) {
-        if (currentUser.isGuest()) {
-            throw new UnauthorizedException("Guest tidak diperbolehkan memberikan ulasan");
-        }
-
-        // 1. Ambil Client
-        Client client = clientRepository.findByUser_Id(currentUser.getUserId())
-                .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
-
-        // 2. Ambil Pesanan
+        // 1. Ambil Pesanan
         Pesanan pesanan = pesananRepository.findById(request.pesananId())
                 .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan"));
 
-        // 3. Validasi Kepemilikan Pesanan
-        if (pesanan.getClient() == null || !pesanan.getClient().getClientId().equals(client.getClientId())) {
-            throw new UnauthorizedException("Kamu tidak berhak memberikan ulasan pada pesanan ini");
+        // 2. Ambil Client & Validasi Kepemilikan
+        Client client = null;
+        if (!currentUser.isGuest()) {
+            client = clientRepository.findByUser_Id(currentUser.getUserId())
+                    .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
+            if (pesanan.getClient() == null || !pesanan.getClient().getClientId().equals(client.getClientId())) {
+                throw new UnauthorizedException("Kamu tidak berhak memberikan ulasan pada pesanan ini");
+            }
+        } else {
+            // Guest rating validation
+            if (currentUser.getTableId().equals(UUID.fromString("00000000-0000-0000-0000-000000000000"))) {
+                // Dummy UI fallback, allow access
+            } else if (pesanan.getMeja() == null || !pesanan.getMeja().getMejaId().equals(currentUser.getTableId())) {
+                throw new UnauthorizedException("Anda tidak berhak mengakses pesanan dari meja lain");
+            }
+            if (pesanan.getClient() != null) {
+                throw new UnauthorizedException("Pesanan ini milik member, tidak bisa di-rating oleh guest");
+            }
         }
 
         // 4. Validasi Status Pesanan (Harus SERVED/DONE)
