@@ -75,8 +75,8 @@ public class SecurityConfig {
                         "/v3/api-docs/**"
                 ).permitAll()
 
-                // ── Actuator (public, tapi detail only when_authorized) ──────
-                .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                // ── Actuator & Health Check (public) ─────────────────────────
+                .requestMatchers("/api/health", "/actuator/health", "/actuator/info").permitAll()
 
                 // ── Semua endpoint lain butuh autentikasi ────────────────────
                 .anyRequest().authenticated()
