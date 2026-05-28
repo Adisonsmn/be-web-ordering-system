@@ -31,9 +31,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        String[] origins = allowedOrigins.split(",");
+        String[] additional = {"http://localhost:*", "https://*.supabase.co"};
+        String[] allOrigins = new String[origins.length + additional.length];
+        System.arraycopy(origins, 0, allOrigins, 0, origins.length);
+        System.arraycopy(additional, 0, allOrigins, origins.length, additional.length);
+
         registry.addEndpoint("/ws")
-                // Izinkan origin dari config + semua port localhost untuk dev
-                .setAllowedOriginPatterns(allowedOrigins, "http://localhost:*", "https://*.supabase.co")
+                .setAllowedOriginPatterns(allOrigins)
                 .withSockJS(); // Fallback untuk browser yang tidak support native WebSocket
     }
 }

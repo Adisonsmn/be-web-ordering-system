@@ -1,0 +1,45 @@
+name: Deploy Aroma Senja Backend to Azure VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      run: mvn clean package -DskipTests
+
+    - name: Copy JAR to Azure VM via SCP
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.VM_IP }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.VM_SSH_KEY }}
+        source: "target/aroma-senja-backend-0.0.1-SNAPSHOT.jar"
+        target: "/home/${{ secrets.VM_USER }}/"
+        strip_components: 1
+
+    - name: Rename JAR and Restart Service via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VM_IP }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.VM_SSH_KEY }}
+        script: |
+          mv /home/${{ secrets.VM_USER }}/aroma-senja-backend-0.0.1-SNAPSHOT.jar /home/${{ secrets.VM_USER }}/aroma-senja.jar
+          sudo systemctl restart aroma-senja.service
+          sudo systemctl status aroma-senja.service

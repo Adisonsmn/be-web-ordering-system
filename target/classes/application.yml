@@ -44,7 +44,7 @@ app:
 
   # QR Code base URL — dipakai saat generate QR
   qr:
-    base-url: ${APP_BASE_URL:http://localhost:8080}/api/meja/scan
+    base-url: ${QR_BASE_URL:http://localhost:8080/api/meja/scan}
 
   # Poin loyalitas
   poin:
