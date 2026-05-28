@@ -11,11 +11,13 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface MenuMapper {
 
+    @Mapping(target = "isAvailable", source = "available")
     MenuResponse toResponse(Menu menu);
 
     List<MenuResponse> toResponseList(List<Menu> menus);
 
     @Mapping(target = "averageRating", ignore = true) // Set manually in Service
+    @Mapping(target = "isAvailable", source = "available")
     MenuDetailResponse toDetailResponse(Menu menu);
 
     default MenuResponse.PromoMinResponse toPromoMinResponse(Promo promo) {

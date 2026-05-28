@@ -33,6 +33,7 @@ F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\sr
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\dto\UpdateMemberRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\dto\UpdateRestoConfigRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\entity\RestoConfig.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\HealthController.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\MemberController.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\MemberService.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\config_resto\MemberServiceImpl.java
