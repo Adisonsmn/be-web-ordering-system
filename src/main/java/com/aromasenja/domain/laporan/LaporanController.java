@@ -36,6 +36,16 @@ public class LaporanController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data dashboard", response));
     }
 
+    @GetMapping("/dashboard/delta")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Perbandingan metrik KPI vs hari sebelumnya (Admin Only)")
+    public ResponseEntity<ApiResponse<DashboardDeltaResponse>> getDashboardDelta(
+            @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate tanggal) {
+        DashboardDeltaResponse response = laporanService.getDashboardDelta(tanggal);
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data delta", response));
+    }
+
     @GetMapping("/pendapatan")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")

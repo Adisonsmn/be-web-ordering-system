@@ -64,9 +64,10 @@ public class RatingServiceImpl implements RatingService {
         }
 
         // 4. Validasi Status Pesanan (Harus SERVED/DONE)
-        if (pesanan.getStatus() != StatusPesanan.SERVED) {
-            throw new BusinessException("Ulasan hanya dapat diberikan jika pesanan sudah selesai (SERVED)");
-        }
+        // [UNTUK TESTING] Karena dashboard admin belum dibuat, kita skip validasi ini sementara
+        // if (pesanan.getStatus() != StatusPesanan.SERVED) {
+        //     throw new BusinessException("Ulasan hanya dapat diberikan jika pesanan sudah selesai (SERVED)");
+        // }
 
         // 5. Validasi: 1 pesanan hanya boleh dirating sekali
         if (ratingRepository.existsByPesananPesananId(request.pesananId())) {

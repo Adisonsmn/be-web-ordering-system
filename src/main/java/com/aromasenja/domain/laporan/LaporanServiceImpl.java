@@ -104,6 +104,72 @@ public class LaporanServiceImpl implements LaporanService {
     }
 
     @Override
+    public DashboardDeltaResponse getDashboardDelta(LocalDate tanggal) {
+        // Range for today (or requested date)
+        LocalDateTime startToday = tanggal.atStartOfDay().atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        LocalDateTime endToday = tanggal.atTime(LocalTime.MAX).atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+
+        // Range for yesterday
+        LocalDate kemarin = tanggal.minusDays(1);
+        LocalDateTime startKemarin = kemarin.atStartOfDay().atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        LocalDateTime endKemarin = kemarin.atTime(LocalTime.MAX).atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+
+        // 1. Pendapatan
+        BigDecimal pToday = pesananRepository.sumTotalHargaByStatusAndTanggalPesananBetween(StatusPesanan.SERVED, startToday, endToday);
+        BigDecimal pKemarin = pesananRepository.sumTotalHargaByStatusAndTanggalPesananBetween(StatusPesanan.SERVED, startKemarin, endKemarin);
+        DashboardDeltaResponse.MetrikDelta pendapatanDelta = calculateDelta(
+                pToday != null ? pToday.doubleValue() : 0.0,
+                pKemarin != null ? pKemarin.doubleValue() : 0.0
+        );
+
+        // 2. Total Pesanan
+        long tpToday = pesananRepository.countNonCancelledByTanggalPesananBetween(startToday, endToday);
+        long tpKemarin = pesananRepository.countNonCancelledByTanggalPesananBetween(startKemarin, endKemarin);
+        DashboardDeltaResponse.MetrikDelta totalPesananDelta = calculateDelta(
+                (double) tpToday,
+                (double) tpKemarin
+        );
+
+        // 3. Meja Aktif
+        long maToday = pesananRepository.countDistinctMejaByTanggalPesananBetween(startToday, endToday);
+        long maKemarin = pesananRepository.countDistinctMejaByTanggalPesananBetween(startKemarin, endKemarin);
+        DashboardDeltaResponse.MetrikDelta mejaAktifDelta = calculateDelta(
+                (double) maToday,
+                (double) maKemarin
+        );
+
+        // 4. Rating Rata-rata
+        double rrToday = ratingRepository.getAverageRatingByCreatedAtBetween(startToday, endToday);
+        double rrKemarin = ratingRepository.getAverageRatingByCreatedAtBetween(startKemarin, endKemarin);
+        DashboardDeltaResponse.MetrikDelta ratingRataDelta = calculateDelta(
+                rrToday,
+                rrKemarin
+        );
+
+        return new DashboardDeltaResponse(
+                pendapatanDelta,
+                totalPesananDelta,
+                mejaAktifDelta,
+                ratingRataDelta
+        );
+    }
+
+    private DashboardDeltaResponse.MetrikDelta calculateDelta(Double hariIni, Double kemarin) {
+        if (kemarin == null || kemarin == 0.0) {
+            return new DashboardDeltaResponse.MetrikDelta(hariIni, kemarin, null, "no_data");
+        }
+        double deltaPersen = ((hariIni - kemarin) / kemarin) * 100.0;
+        // round to 1 decimal place
+        deltaPersen = Math.round(deltaPersen * 10.0) / 10.0;
+        
+        String arah = "sama";
+        if (deltaPersen > 0) arah = "naik";
+        else if (deltaPersen < 0) arah = "turun";
+
+        return new DashboardDeltaResponse.MetrikDelta(hariIni, kemarin, deltaPersen, arah);
+    }
+
+    @Override
     public List<PendapatanTrendResponse> getPendapatanTrend(String period, Integer bulan, Integer tahun) {
         ZonedDateTime nowJakarta = ZonedDateTime.now(JAKARTA_ZONE);
         if (tahun == null) tahun = nowJakarta.getYear();

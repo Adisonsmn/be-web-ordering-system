@@ -7,6 +7,8 @@ public interface LaporanService {
 
     DashboardStatsResponse getDashboardStats();
 
+    DashboardDeltaResponse getDashboardDelta(java.time.LocalDate tanggal);
+
     List<PendapatanTrendResponse> getPendapatanTrend(String period, Integer bulan, Integer tahun);
 
     List<MenuTerlarisResponse> getMenuTerlaris(String period, String category, Integer limit);

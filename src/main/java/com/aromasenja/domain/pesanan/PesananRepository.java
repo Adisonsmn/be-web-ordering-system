@@ -64,4 +64,14 @@ public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
 
     @Query("SELECT MAX(p.tanggalPesanan) FROM Pesanan p WHERE p.client.clientId = :clientId")
     java.time.LocalDateTime findLastOrderTimeByClientId(@Param("clientId") UUID clientId);
+
+    @Query("SELECT COUNT(p) FROM Pesanan p WHERE p.tanggalPesanan BETWEEN :start AND :end AND p.status <> com.aromasenja.domain.pesanan.entity.StatusPesanan.CANCELLED")
+    long countNonCancelledByTanggalPesananBetween(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT COUNT(DISTINCT p.meja.mejaId) FROM Pesanan p WHERE p.tanggalPesanan BETWEEN :start AND :end AND p.status <> com.aromasenja.domain.pesanan.entity.StatusPesanan.CANCELLED")
+    long countDistinctMejaByTanggalPesananBetween(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
 }
