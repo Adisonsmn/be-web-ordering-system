@@ -57,6 +57,9 @@ public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
     List<Pesanan> findByStatusIn(
             @Param("statuses") java.util.Collection<StatusPesanan> statuses);
 
+    @Query("SELECT p FROM Pesanan p LEFT JOIN FETCH p.meja LEFT JOIN FETCH p.client WHERE p.status = :status ORDER BY p.tanggalPesanan ASC LIMIT 20")
+    List<Pesanan> findTop20ByStatusOrderByTanggalPesananAsc(@Param("status") StatusPesanan status);
+
     @Query("SELECT p FROM Pesanan p WHERE p.tanggalPesanan BETWEEN :start AND :end")
     java.util.List<Pesanan> findByTanggalPesananBetween(
             @Param("start") java.time.LocalDateTime start,
@@ -72,6 +75,27 @@ public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
 
     @Query("SELECT COUNT(DISTINCT p.meja.mejaId) FROM Pesanan p WHERE p.tanggalPesanan BETWEEN :start AND :end AND p.status <> com.aromasenja.domain.pesanan.entity.StatusPesanan.CANCELLED")
     long countDistinctMejaByTanggalPesananBetween(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+    @Query("SELECT FUNCTION('date_trunc', 'day', p.tanggalPesanan) as tanggal, " +
+           "SUM(p.totalHarga) as totalPendapatan, COUNT(p) as totalPesanan " +
+           "FROM Pesanan p " +
+           "WHERE p.status = com.aromasenja.domain.pesanan.entity.StatusPesanan.SERVED " +
+           "AND p.tanggalPesanan BETWEEN :start AND :end " +
+           "GROUP BY FUNCTION('date_trunc', 'day', p.tanggalPesanan) " +
+           "ORDER BY FUNCTION('date_trunc', 'day', p.tanggalPesanan) ASC")
+    List<Object[]> findDailyRevenueBetween(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
+    @Query("SELECT FUNCTION('date_trunc', 'month', p.tanggalPesanan) as bulan, " +
+           "SUM(p.totalHarga) as totalPendapatan, COUNT(p) as totalPesanan " +
+           "FROM Pesanan p " +
+           "WHERE p.status = com.aromasenja.domain.pesanan.entity.StatusPesanan.SERVED " +
+           "AND p.tanggalPesanan BETWEEN :start AND :end " +
+           "GROUP BY FUNCTION('date_trunc', 'month', p.tanggalPesanan) " +
+           "ORDER BY FUNCTION('date_trunc', 'month', p.tanggalPesanan) ASC")
+    List<Object[]> findMonthlyRevenueBetween(
             @Param("start") java.time.LocalDateTime start,
             @Param("end") java.time.LocalDateTime end);
 }

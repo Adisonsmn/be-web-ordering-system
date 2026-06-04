@@ -34,11 +34,16 @@ public class RestoConfigServiceImpl implements RestoConfigService {
     @Override
     @Transactional
     public RestoConfigResponse updateConfig(UpdateRestoConfigRequest request) {
+        log.info("Received updateConfig request: isOpen={}, openTime={}, closeTime={}, nama={}", 
+                 request.isOpen(), request.openTime(), request.closeTime(), request.nama());
+
         RestoConfig config = restoConfigRepository.findFirstBy()
                 .orElseGet(this::createDefaultConfig);
 
         boolean oldIsOpen = config.isOpen();
         boolean newIsOpen = request.isOpen();
+
+        log.info("Updating resto status: oldIsOpen={}, newIsOpen={}", oldIsOpen, newIsOpen);
 
         config.setOpen(newIsOpen);
         config.setOpenTime(request.openTime());

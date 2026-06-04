@@ -92,6 +92,7 @@ F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\sr
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\BayarPesananRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\CreatePesananRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\DetailPesananResponse.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\KanbanPesananResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\PesananResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\StrukPesananResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\pesanan\dto\UpdateStatusPesananRequest.java

@@ -14,6 +14,8 @@ public record PromoResponse(
     LocalDate tanggalSelesai,
     String targetCategory,
     boolean isActive,
+    Integer usageCount,
+    Integer maxUsage,
     String imageUrl,
     String tag,
     String description

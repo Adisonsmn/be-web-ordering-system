@@ -4,8 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalTime;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record UpdateRestoConfigRequest(
     @NotNull(message = "Status buka/tutup wajib diisi")
+    @JsonProperty("isOpen")
     Boolean isOpen,
 
     @NotNull(message = "Jam buka wajib diisi")

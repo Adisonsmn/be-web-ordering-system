@@ -17,9 +17,11 @@ public interface PromoMapper {
 
     @Mapping(target = "promoId", ignore = true)
     @Mapping(target = "active", ignore = true)
+    @Mapping(target = "usageCount", ignore = true)
     Promo toEntity(CreatePromoRequest request);
 
     @Mapping(target = "promoId", ignore = true)
     @Mapping(target = "active", ignore = true)
+    @Mapping(target = "usageCount", ignore = true)
     void updateEntityFromRequest(CreatePromoRequest request, @MappingTarget Promo promo);
 }

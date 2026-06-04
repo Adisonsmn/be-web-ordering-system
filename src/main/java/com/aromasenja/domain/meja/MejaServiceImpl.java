@@ -54,20 +54,35 @@ public class MejaServiceImpl implements MejaService {
     @Override
     @Transactional
     public MejaResponse createMeja(CreateMejaRequest request) {
-        if (mejaRepository.existsByNomorMeja(request.nomorMeja())) {
-            throw new BusinessException("Nomor meja " + request.nomorMeja() + " sudah digunakan");
-        }
-
-        ZoneMeja zone;
-        try {
-            zone = ZoneMeja.valueOf(request.zone().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            try {
-                zone = ZoneMeja.fromDbValue(request.zone());
-            } catch (IllegalArgumentException ex) {
-                throw new BusinessException("Zona tidak valid: " + request.zone());
+        // Cek apakah meja dengan nomor tersebut sudah ada
+        java.util.Optional<Meja> existingMejaOpt = mejaRepository.findByNomorMeja(request.nomorMeja());
+        
+        if (existingMejaOpt.isPresent()) {
+            Meja existingMeja = existingMejaOpt.get();
+            if (existingMeja.isActive()) {
+                throw new BusinessException("Nomor meja " + request.nomorMeja() + " sudah digunakan");
+            } else {
+                // Reactivate meja yang sudah di-soft-delete
+                existingMeja.setActive(true);
+                existingMeja.setOccupied(false);
+                
+                ZoneMeja zone = getZone(request.zone());
+                existingMeja.setZone(zone);
+                
+                // Update createdBy
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.getPrincipal() instanceof UserPrincipal principal) {
+                    adminRepository.findByUser_Id(principal.getUserId())
+                            .ifPresent(admin -> existingMeja.setCreatedBy(admin.getAdminId()));
+                }
+                
+                Meja savedMeja = mejaRepository.save(existingMeja);
+                log.info("Meja berhasil diaktifkan kembali: nomor={}, zone={}", savedMeja.getNomorMeja(), savedMeja.getZone());
+                return mejaMapper.toResponse(savedMeja);
             }
         }
+
+        ZoneMeja zone = getZone(request.zone());
 
         Meja meja = new Meja();
         meja.setNomorMeja(request.nomorMeja());
@@ -94,6 +109,18 @@ public class MejaServiceImpl implements MejaService {
 
         log.info("Meja baru berhasil dibuat: nomor={}, zone={}", savedMeja.getNomorMeja(), savedMeja.getZone());
         return mejaMapper.toResponse(savedMeja);
+    }
+    
+    private ZoneMeja getZone(String zoneStr) {
+        try {
+            return ZoneMeja.valueOf(zoneStr.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            try {
+                return ZoneMeja.fromDbValue(zoneStr);
+            } catch (IllegalArgumentException ex) {
+                throw new BusinessException("Zona tidak valid: " + zoneStr);
+            }
+        }
     }
 
     @Override

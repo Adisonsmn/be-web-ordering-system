@@ -184,19 +184,28 @@ public class LaporanServiceImpl implements LaporanService {
             LocalDateTime start = startMonth.atStartOfDay().atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
             LocalDateTime end = endMonth.atTime(LocalTime.MAX).atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
 
-            List<Pesanan> orders = pesananRepository.findByTanggalPesananBetween(start, end).stream()
-                    .filter(p -> p.getStatus() == StatusPesanan.SERVED)
-                    .toList();
+            List<Object[]> results = pesananRepository.findDailyRevenueBetween(start, end);
 
             int totalDays = endMonth.getDayOfMonth();
-            Map<Integer, List<Pesanan>> groupedByDay = orders.stream()
-                    .collect(Collectors.groupingBy(p -> p.getTanggalPesanan().atZone(ZoneId.systemDefault()).withZoneSameInstant(JAKARTA_ZONE).getDayOfMonth()));
+            Map<Integer, PendapatanTrendResponse> trendMap = new HashMap<>();
+            for (int day = 1; day <= totalDays; day++) {
+                LocalDate labelDate = LocalDate.of(tahun, bulan, day);
+                trendMap.put(day, new PendapatanTrendResponse(labelDate.toString(), BigDecimal.ZERO, 0));
+            }
+
+            for (Object[] row : results) {
+                LocalDateTime date = parseDateTrunc(row[0]);
+                int day = date.atZone(ZoneId.systemDefault()).withZoneSameInstant(JAKARTA_ZONE).getDayOfMonth();
+
+                BigDecimal totalIncome = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+                int totalPesanan = row[2] != null ? ((Number) row[2]).intValue() : 0;
+
+                LocalDate labelDate = LocalDate.of(tahun, bulan, day);
+                trendMap.put(day, new PendapatanTrendResponse(labelDate.toString(), totalIncome, totalPesanan));
+            }
 
             for (int day = 1; day <= totalDays; day++) {
-                List<Pesanan> dayOrders = groupedByDay.getOrDefault(day, Collections.emptyList());
-                BigDecimal totalIncome = dayOrders.stream().map(Pesanan::getTotalHarga).reduce(BigDecimal.ZERO, BigDecimal::add);
-                LocalDate labelDate = LocalDate.of(tahun, bulan, day);
-                trends.add(new PendapatanTrendResponse(labelDate.toString(), totalIncome, dayOrders.size()));
+                trends.add(trendMap.get(day));
             }
 
         } else if ("tahunan".equalsIgnoreCase(period)) {
@@ -206,23 +215,43 @@ public class LaporanServiceImpl implements LaporanService {
             LocalDateTime start = startYear.atStartOfDay().atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
             LocalDateTime end = endYear.atTime(LocalTime.MAX).atZone(JAKARTA_ZONE).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
 
-            List<Pesanan> orders = pesananRepository.findByTanggalPesananBetween(start, end).stream()
-                    .filter(p -> p.getStatus() == StatusPesanan.SERVED)
-                    .toList();
-
-            Map<Integer, List<Pesanan>> groupedByMonth = orders.stream()
-                    .collect(Collectors.groupingBy(p -> p.getTanggalPesanan().atZone(ZoneId.systemDefault()).withZoneSameInstant(JAKARTA_ZONE).getMonthValue()));
+            List<Object[]> results = pesananRepository.findMonthlyRevenueBetween(start, end);
 
             String[] monthLabels = {"Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"};
 
+            Map<Integer, PendapatanTrendResponse> trendMap = new HashMap<>();
             for (int m = 1; m <= 12; m++) {
-                List<Pesanan> monthOrders = groupedByMonth.getOrDefault(m, Collections.emptyList());
-                BigDecimal totalIncome = monthOrders.stream().map(Pesanan::getTotalHarga).reduce(BigDecimal.ZERO, BigDecimal::add);
-                trends.add(new PendapatanTrendResponse(monthLabels[m - 1] + " " + tahun, totalIncome, monthOrders.size()));
+                trendMap.put(m, new PendapatanTrendResponse(monthLabels[m - 1] + " " + tahun, BigDecimal.ZERO, 0));
+            }
+
+            for (Object[] row : results) {
+                LocalDateTime date = parseDateTrunc(row[0]);
+                int month = date.atZone(ZoneId.systemDefault()).withZoneSameInstant(JAKARTA_ZONE).getMonthValue();
+
+                BigDecimal totalIncome = row[1] != null ? new BigDecimal(row[1].toString()) : BigDecimal.ZERO;
+                int totalPesanan = row[2] != null ? ((Number) row[2]).intValue() : 0;
+
+                trendMap.put(month, new PendapatanTrendResponse(monthLabels[month - 1] + " " + tahun, totalIncome, totalPesanan));
+            }
+
+            for (int m = 1; m <= 12; m++) {
+                trends.add(trendMap.get(m));
             }
         }
 
         return trends;
+    }
+
+    private LocalDateTime parseDateTrunc(Object obj) {
+        if (obj instanceof LocalDateTime) return (LocalDateTime) obj;
+        if (obj instanceof java.sql.Timestamp) return ((java.sql.Timestamp) obj).toLocalDateTime();
+        if (obj instanceof java.sql.Date) return ((java.sql.Date) obj).toLocalDate().atStartOfDay();
+        if (obj instanceof LocalDate) return ((LocalDate) obj).atStartOfDay();
+        String str = obj.toString();
+        if (str.length() > 10) {
+            return LocalDateTime.parse(str.substring(0, 19).replace(" ", "T"));
+        }
+        return LocalDate.parse(str.substring(0, 10)).atStartOfDay();
     }
 
     @Override
@@ -409,30 +438,4 @@ public class LaporanServiceImpl implements LaporanService {
         return new LocalDateTime[]{start, end};
     }
 
-    private static class MenuAggregate {
-        final UUID menuId;
-        final String menuName;
-        long totalQty = 0;
-        BigDecimal totalIncome = BigDecimal.ZERO;
-
-        MenuAggregate(UUID menuId, String menuName) {
-            this.menuId = menuId;
-            this.menuName = menuName;
-        }
-
-        long getTotalQty() { return totalQty; }
-    }
-
-    private static class PromoAggregate {
-        final UUID promoId;
-        final String namaPromo;
-        long count = 0;
-
-        PromoAggregate(UUID promoId, String namaPromo) {
-            this.promoId = promoId;
-            this.namaPromo = namaPromo;
-        }
-
-        long getCount() { return count; }
-    }
 }

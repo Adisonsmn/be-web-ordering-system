@@ -15,6 +15,7 @@ import java.util.UUID;
 public interface MejaRepository extends JpaRepository<Meja, UUID> {
     List<Meja> findByIsActiveTrue();
     boolean existsByNomorMeja(Integer nomorMeja);
+    Optional<Meja> findByNomorMeja(Integer nomorMeja);
     Optional<Meja> findByMejaIdAndIsActiveTrue(UUID mejaId);
     
     long countByIsActiveTrueAndIsOccupiedTrue();

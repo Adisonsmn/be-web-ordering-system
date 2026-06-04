@@ -60,7 +60,7 @@ class PromoServiceImplTest {
                 BigDecimal.valueOf(5000),
                 LocalDate.now().minusDays(1),
                 LocalDate.now().plusDays(5),
-                null, null, null, null
+                null, null, null, null, null
         );
 
         mockResponse = new PromoResponse(
@@ -72,7 +72,7 @@ class PromoServiceImplTest {
                 LocalDate.now().plusDays(5),
                 null,
                 true,
-                null, null, null
+                null, null, null, null, null
         );
     }
 
@@ -119,7 +119,7 @@ class PromoServiceImplTest {
     void createPromo_gagal_tanggalSelesaiSebelumMulai() {
         CreatePromoRequest invalid = new CreatePromoRequest(
                 "Promo Gagal", TipeDiskon.NOMINAL, BigDecimal.ONE,
-                LocalDate.now().plusDays(1), LocalDate.now(), null, null, null, null
+                LocalDate.now().plusDays(1), LocalDate.now(), null, null, null, null, null
         );
 
         assertThatThrownBy(() -> promoService.createPromo(invalid))
@@ -152,7 +152,7 @@ class PromoServiceImplTest {
                 BigDecimal.valueOf(10000), // Diubah dari 5000
                 LocalDate.now().minusDays(1),
                 LocalDate.now().plusDays(5),
-                null, null, null, null
+                null, null, null, null, null
         );
 
         assertThatThrownBy(() -> promoService.updatePromo(promoId, updateRequest))

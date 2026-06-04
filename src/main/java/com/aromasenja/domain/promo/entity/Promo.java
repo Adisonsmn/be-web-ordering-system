@@ -39,6 +39,12 @@ public class Promo {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
+    @Column(name = "usage_count", nullable = false)
+    private Integer usageCount = 0;
+
+    @Column(name = "max_usage")
+    private Integer maxUsage;
+
     @Column(name = "image_url")
     private String imageUrl;
 

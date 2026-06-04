@@ -59,7 +59,7 @@ class PromoControllerTest {
                 LocalDate.now().plusDays(5),
                 null,
                 true,
-                null, null, null
+                null, null, null, null, null
         );
 
         validRequest = new CreatePromoRequest(
@@ -68,7 +68,7 @@ class PromoControllerTest {
                 BigDecimal.valueOf(5000),
                 LocalDate.now().minusDays(1),
                 LocalDate.now().plusDays(5),
-                null, null, null, null
+                null, null, null, null, null
         );
     }
 

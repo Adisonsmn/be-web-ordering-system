@@ -19,6 +19,8 @@ public interface PesananService {
 
     Page<PesananResponse> getRiwayatPesanan(UserPrincipal currentUser, Pageable pageable);
 
+    KanbanPesananResponse getKanbanPesananAdmin();
+
     Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, UUID mejaId, LocalDate tanggal, Pageable pageable);
 
     PesananResponse updateStatus(UUID pesananId, UpdateStatusPesananRequest request);

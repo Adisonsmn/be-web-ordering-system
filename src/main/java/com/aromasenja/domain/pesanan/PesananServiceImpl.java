@@ -297,6 +297,20 @@ public class PesananServiceImpl implements PesananService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public KanbanPesananResponse getKanbanPesananAdmin() {
+        List<Pesanan> newOrders = pesananRepository.findTop20ByStatusOrderByTanggalPesananAsc(StatusPesanan.NEW);
+        List<Pesanan> preparingOrders = pesananRepository.findTop20ByStatusOrderByTanggalPesananAsc(StatusPesanan.PREPARING);
+        List<Pesanan> readyOrders = pesananRepository.findTop20ByStatusOrderByTanggalPesananAsc(StatusPesanan.READY);
+
+        return new KanbanPesananResponse(
+                newOrders.stream().map(pesananMapper::toResponse).toList(),
+                preparingOrders.stream().map(pesananMapper::toResponse).toList(),
+                readyOrders.stream().map(pesananMapper::toResponse).toList()
+        );
+    }
+
+    @Override
     public PesananResponse updateStatus(UUID pesananId, UpdateStatusPesananRequest request) {
         Pesanan pesanan = pesananRepository.findById(pesananId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pesanan tidak ditemukan"));
@@ -312,6 +326,23 @@ public class PesananServiceImpl implements PesananService {
 
         if (request.status() == StatusPesanan.SERVED) {
             pesanan.setServed(true);
+            
+            // Kosongkan meja
+            Meja meja = pesanan.getMeja();
+            if (meja != null) {
+                meja.setOccupied(false);
+                mejaRepository.save(meja);
+                
+                try {
+                    notificationService.publishMejaStatus(new MejaStatusWsPayload(
+                            meja.getMejaId(),
+                            meja.getNomorMeja(),
+                            false
+                    ));
+                } catch (Exception e) {
+                    log.error("Gagal publish WS meja status untuk pesanan SERVED: mejaId={}", meja.getMejaId(), e);
+                }
+            }
         }
 
         Pesanan updated = pesananRepository.save(pesanan);
@@ -352,6 +383,23 @@ public class PesananServiceImpl implements PesananService {
         pesanan.setJumlahDibayar(request.jumlahDibayar());
         pesanan.setStatus(StatusPesanan.SERVED);
         pesanan.setServed(true);
+
+        // Kosongkan meja
+        Meja meja = pesanan.getMeja();
+        if (meja != null) {
+            meja.setOccupied(false);
+            mejaRepository.save(meja);
+            
+            try {
+                notificationService.publishMejaStatus(new MejaStatusWsPayload(
+                        meja.getMejaId(),
+                        meja.getNomorMeja(),
+                        false
+                ));
+            } catch (Exception e) {
+                log.error("Gagal publish WS meja status untuk pembayaran pesanan: mejaId={}", meja.getMejaId(), e);
+            }
+        }
 
         Pesanan saved = pesananRepository.save(pesanan);
 
@@ -445,8 +493,8 @@ public class PesananServiceImpl implements PesananService {
 
     private String generateKodePesanan() {
         String dateStr = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-        int randomNum = (int) (Math.random() * 9000) + 1000;
-        return "AR-" + dateStr + "-" + randomNum;
+        String uniquePart = UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        return "AR-" + dateStr + "-" + uniquePart;
     }
 
     private boolean isPromoActive(Promo promo) {

@@ -88,6 +88,15 @@ public class PesananController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil daftar pesanan", response));
     }
 
+    @GetMapping("/kanban")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Ambil data kanban board (NEW, PREPARING, READY) masing-masing max 20 item (Admin)")
+    public ResponseEntity<ApiResponse<KanbanPesananResponse>> getKanban() {
+        KanbanPesananResponse response = pesananService.getKanbanPesananAdmin();
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil data kanban pesanan", response));
+    }
+
     @PatchMapping("/{pesananId}/status")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")

@@ -25,6 +25,7 @@ public record CreatePromoRequest(
     LocalDate tanggalSelesai,
 
     String targetCategory,
+    Integer maxUsage,
     String imageUrl,
     String tag,
     String description
