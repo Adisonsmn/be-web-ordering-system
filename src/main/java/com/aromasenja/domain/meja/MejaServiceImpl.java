@@ -101,7 +101,7 @@ public class MejaServiceImpl implements MejaService {
         Meja savedMeja = mejaRepository.save(meja);
 
         // Opsi A: Gunakan mejaId UUID langsung sebagai token/ID di QR URL
-        String qrUrl = qrBaseUrl + "/" + savedMeja.getMejaId().toString();
+        String qrUrl = qrBaseUrl + "?meja=" + savedMeja.getMejaId().toString();
         savedMeja.setQrCodeUrl(qrUrl);
 
         // Update kembali dengan QR URL
@@ -145,7 +145,7 @@ public class MejaServiceImpl implements MejaService {
 
         String qrUrl = meja.getQrCodeUrl();
         if (qrUrl == null) {
-            qrUrl = qrBaseUrl + "/" + mejaId.toString();
+            qrUrl = qrBaseUrl + "?meja=" + mejaId.toString();
         }
 
         try {

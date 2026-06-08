@@ -28,9 +28,7 @@ public class RatingController {
     private final RatingService ratingService;
 
     @PostMapping
-    @PreAuthorize("hasRole('CLIENT')")
-    @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Submit rating & ulasan ulasan baru (Member Only)")
+    @Operation(summary = "Submit rating & ulasan ulasan baru (Public)")
     public ResponseEntity<ApiResponse<RatingResponse>> submitRating(
             @Valid @RequestBody CreateRatingRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {

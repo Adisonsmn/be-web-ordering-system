@@ -82,15 +82,8 @@ public class PesananServiceImpl implements PesananService {
         }
 
         // 3. Validasi Meja
-        Meja meja;
-        if (request.mejaId().equals(UUID.fromString("00000000-0000-0000-0000-000000000000"))) {
-            // Fallback for UI dummy testing
-            meja = mejaRepository.findByIsActiveTrue().stream().findFirst()
-                    .orElseThrow(() -> new BusinessException("Tidak ada meja aktif untuk dummy ID"));
-        } else {
-            meja = mejaRepository.findById(request.mejaId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Meja tidak ditemukan"));
-        }
+        Meja meja = mejaRepository.findById(request.mejaId())
+                .orElseThrow(() -> new ResourceNotFoundException("Meja tidak ditemukan"));
         if (!meja.isActive()) {
             throw new BusinessException("Meja tidak aktif");
         }
@@ -257,7 +250,8 @@ public class PesananServiceImpl implements PesananService {
                     dp.getMenu().getMenuName(),
                     dp.getQuantity(),
                     dp.getHargaSetelahDiskon(),
-                    dp.getSubTotal()
+                    dp.getSubTotal(),
+                    dp.getCatatan()
             ));
         }
 

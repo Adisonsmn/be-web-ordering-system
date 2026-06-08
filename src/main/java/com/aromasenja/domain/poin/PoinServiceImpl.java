@@ -33,6 +33,29 @@ public class PoinServiceImpl implements PoinService {
     @Value("${app.poin.rupiah-per-poin}")
     private Integer rupiahPerPoin;
 
+    @Value("${app.poin.rupiah-per-earned-poin}")
+    private Integer rupiahPerEarnedPoin;
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.aromasenja.domain.poin.dto.PoinEstimasiResponse getEstimasiPoin(BigDecimal subtotal, UserPrincipal currentUser) {
+        if (currentUser.isGuest()) {
+            return new com.aromasenja.domain.poin.dto.PoinEstimasiResponse(0);
+        }
+
+        // Validasi client
+        clientRepository.findByUser_Id(currentUser.getUserId())
+                .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
+
+        if (subtotal == null || subtotal.compareTo(BigDecimal.ZERO) <= 0) {
+            return new com.aromasenja.domain.poin.dto.PoinEstimasiResponse(0);
+        }
+
+        // Hitung poin yang didapat: subtotal / rupiahPerEarnedPoin
+        BigDecimal earned = subtotal.divide(BigDecimal.valueOf(rupiahPerEarnedPoin), 0, java.math.RoundingMode.DOWN);
+        return new com.aromasenja.domain.poin.dto.PoinEstimasiResponse(earned.intValue());
+    }
+
     @Override
     @Transactional(readOnly = true)
     public PoinBalanceResponse getPoinBalance(UserPrincipal currentUser) {

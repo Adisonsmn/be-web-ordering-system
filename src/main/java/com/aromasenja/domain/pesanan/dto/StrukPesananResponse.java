@@ -22,6 +22,7 @@ public record StrukPesananResponse(
         String menuName,
         Integer quantity,
         BigDecimal hargaSetelahDiskon,
-        BigDecimal subTotal
+        BigDecimal subTotal,
+        String catatan
     ) {}
 }

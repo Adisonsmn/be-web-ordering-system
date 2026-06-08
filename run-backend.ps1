@@ -24,4 +24,12 @@ Get-Content $EnvFile | ForEach-Object {
 
 # 3. Run Spring Boot application
 Write-Host "Starting Aroma Senja Backend..." -ForegroundColor Green
-./mvnw spring-boot:run
+$MavenWrapperJar = Join-Path $PSScriptRoot ".mvn\wrapper\maven-wrapper.jar"
+$JavaArgs = @(
+    "-Dmaven.multiModuleProjectDirectory=$PSScriptRoot",
+    "-cp",
+    $MavenWrapperJar,
+    "org.apache.maven.wrapper.MavenWrapperMain",
+    "spring-boot:run"
+)
+& java @JavaArgs

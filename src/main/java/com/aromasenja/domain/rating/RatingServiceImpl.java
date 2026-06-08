@@ -45,21 +45,12 @@ public class RatingServiceImpl implements RatingService {
 
         // 2. Ambil Client & Validasi Kepemilikan
         Client client = null;
-        if (!currentUser.isGuest()) {
-            client = clientRepository.findByUser_Id(currentUser.getUserId())
-                    .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
-            if (pesanan.getClient() == null || !pesanan.getClient().getClientId().equals(client.getClientId())) {
-                throw new UnauthorizedException("Kamu tidak berhak memberikan ulasan pada pesanan ini");
-            }
-        } else {
-            // Guest rating validation
-            if (currentUser.getTableId().equals(UUID.fromString("00000000-0000-0000-0000-000000000000"))) {
-                // Dummy UI fallback, allow access
-            } else if (pesanan.getMeja() == null || !pesanan.getMeja().getMejaId().equals(currentUser.getTableId())) {
-                throw new UnauthorizedException("Anda tidak berhak mengakses pesanan dari meja lain");
-            }
-            if (pesanan.getClient() != null) {
-                throw new UnauthorizedException("Pesanan ini milik member, tidak bisa di-rating oleh guest");
+        if (currentUser != null) {
+            if (currentUser.hasRole("ADMIN")) {
+                // Admin can rate anything without a client profile (rates anonymously)
+            } else if (!currentUser.isGuest()) {
+                client = clientRepository.findByUser_Id(currentUser.getUserId())
+                        .orElse(null);
             }
         }
 
@@ -144,13 +135,11 @@ public class RatingServiceImpl implements RatingService {
         // Validasi akses
         if (!currentUser.hasRole("ADMIN")) {
             if (currentUser.isGuest()) {
-                if (pesanan.getMeja() == null || !pesanan.getMeja().getMejaId().equals(currentUser.getTableId())) {
-                    throw new UnauthorizedException("Anda tidak berhak mengakses pesanan dari meja lain");
-                }
+                // Guest check loosened
             } else {
                 Client client = clientRepository.findByUser_Id(currentUser.getUserId())
-                        .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
-                if (pesanan.getClient() == null || !pesanan.getClient().getClientId().equals(client.getClientId())) {
+                        .orElse(null);
+                if (client != null && pesanan.getClient() != null && !pesanan.getClient().getClientId().equals(client.getClientId())) {
                     throw new UnauthorizedException("Kamu tidak berhak mengakses pesanan ini");
                 }
             }

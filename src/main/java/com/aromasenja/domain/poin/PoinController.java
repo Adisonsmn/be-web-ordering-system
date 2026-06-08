@@ -58,4 +58,15 @@ public class PoinController {
         PoinKalkulasiResponse response = poinService.kalkulasiPoin(request, currentUser);
         return ResponseEntity.ok(ApiResponse.success("Berhasil menghitung kalkulasi poin", response));
     }
+
+    @GetMapping("/estimasi")
+    @PreAuthorize("hasRole('CLIENT')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Hitung estimasi poin yang akan didapatkan dari subtotal belanja (Member Only)")
+    public ResponseEntity<ApiResponse<com.aromasenja.domain.poin.dto.PoinEstimasiResponse>> getEstimasi(
+            @RequestParam("subtotal") java.math.BigDecimal subtotal,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        com.aromasenja.domain.poin.dto.PoinEstimasiResponse response = poinService.getEstimasiPoin(subtotal, currentUser);
+        return ResponseEntity.ok(ApiResponse.success("Berhasil menghitung estimasi poin", response));
+    }
 }

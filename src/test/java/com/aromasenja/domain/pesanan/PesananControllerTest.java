@@ -64,7 +64,7 @@ class PesananControllerTest {
         mockStrukResponse = new StrukPesananResponse(
                 pesananId, "AR-20260528-1111", LocalDateTime.now(), 5, MetodePembayaran.QRIS,
                 BigDecimal.valueOf(50000), BigDecimal.valueOf(10000), BigDecimal.ZERO,
-                BigDecimal.valueOf(40000), List.of(new StrukPesananResponse.StrukItem("Nasi Goreng", 2, BigDecimal.valueOf(25000), BigDecimal.valueOf(50000)))
+                BigDecimal.valueOf(40000), List.of(new StrukPesananResponse.StrukItem("Nasi Goreng", 2, BigDecimal.valueOf(25000), BigDecimal.valueOf(50000), "Ekstra pedas"))
         );
     }
 

@@ -15,4 +15,6 @@ public interface PoinService {
     Page<PoinRiwayatResponse> getRiwayatPoin(UserPrincipal currentUser, Pageable pageable);
 
     PoinKalkulasiResponse kalkulasiPoin(PoinKalkulasiRequest request, UserPrincipal currentUser);
+
+    com.aromasenja.domain.poin.dto.PoinEstimasiResponse getEstimasiPoin(java.math.BigDecimal subtotal, UserPrincipal currentUser);
 }
