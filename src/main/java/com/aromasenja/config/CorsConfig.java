@@ -40,7 +40,11 @@ public class CorsConfig {
 
         // Selalu tambahkan dev origins (harmless di prod jika tidak diakses dari sana)
         if (!origins.contains("http://localhost:3000"))  origins.add("http://localhost:3000");
+        if (!origins.contains("http://127.0.0.1:3000"))  origins.add("http://127.0.0.1:3000");
+        if (!origins.contains("http://localhost:3001"))  origins.add("http://localhost:3001");
+        if (!origins.contains("http://127.0.0.1:3001"))  origins.add("http://127.0.0.1:3001");
         if (!origins.contains("http://localhost:5173"))  origins.add("http://localhost:5173");
+        if (!origins.contains("http://127.0.0.1:5173"))  origins.add("http://127.0.0.1:5173");
         if (!origins.contains("http://localhost:8080"))  origins.add("http://localhost:8080");
 
         configuration.setAllowedOrigins(origins);

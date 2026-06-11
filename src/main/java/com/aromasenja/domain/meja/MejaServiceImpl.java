@@ -10,6 +10,7 @@ import com.aromasenja.domain.meja.dto.MejaResponse;
 import com.aromasenja.domain.meja.dto.ScanMejaResponse;
 import com.aromasenja.domain.meja.dto.UpdateMejaStatusRequest;
 import com.aromasenja.domain.meja.entity.Meja;
+import com.aromasenja.domain.meja.entity.MejaSession;
 import com.aromasenja.domain.meja.entity.ZoneMeja;
 import com.aromasenja.domain.user.AdminRepository;
 import com.aromasenja.notification.NotificationService;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,6 +42,7 @@ public class MejaServiceImpl implements MejaService {
     private final RestoConfigRepository restoConfigRepository;
     private final AdminRepository adminRepository;
     private final NotificationService notificationService;
+    private final MejaSessionRepository mejaSessionRepository;
 
     @Value("${app.qr.base-url}")
     private String qrBaseUrl;
@@ -130,6 +133,7 @@ public class MejaServiceImpl implements MejaService {
             throw new ResourceNotFoundException("Meja tidak ditemukan");
         }
         mejaRepository.softDelete(mejaId);
+        mejaSessionRepository.deactivateSessionByMejaId(mejaId);
         log.info("Meja berhasil di-soft-delete: mejaId={}", mejaId);
     }
 
@@ -161,9 +165,16 @@ public class MejaServiceImpl implements MejaService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public ScanMejaResponse scanQr(UUID mejaId) {
-        Meja meja = mejaRepository.findById(mejaId)
+        // Fallback for tests or direct calls where deviceToken is not provided
+        return scanQr(mejaId, UUID.randomUUID().toString());
+    }
+
+    @Override
+    @Transactional
+    public ScanMejaResponse scanQr(UUID mejaId, String deviceToken) {
+        Meja meja = mejaRepository.findByIdWithLock(mejaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Meja tidak ditemukan"));
 
         if (!meja.isActive()) {
@@ -174,13 +185,67 @@ public class MejaServiceImpl implements MejaService {
                 .map(RestoConfig::isOpen)
                 .orElse(true);
 
+        java.util.Optional<MejaSession> activeSessionOpt = mejaSessionRepository.findByMeja_MejaIdAndIsActiveTrue(mejaId);
+        String sessionToken = deviceToken;
+        boolean isNewSession = false;
+
+        if (activeSessionOpt.isPresent()) {
+            MejaSession activeSession = activeSessionOpt.get();
+            if (!activeSession.getDeviceToken().equals(deviceToken)) {
+                if (activeSession.getExpiredAt().isBefore(LocalDateTime.now())) {
+                    activeSession.setActive(false);
+                    mejaSessionRepository.saveAndFlush(activeSession);
+
+                    MejaSession newSession = new MejaSession();
+                    newSession.setMeja(meja);
+                    newSession.setDeviceToken(deviceToken);
+                    newSession.setExpiredAt(LocalDateTime.now().plusHours(4));
+                    newSession.setActive(true);
+                    mejaSessionRepository.save(newSession);
+                    
+                    isNewSession = true;
+                } else {
+                    throw new com.aromasenja.common.exception.ConflictException("Meja sedang digunakan device lain");
+                }
+            } else {
+                activeSession.setExpiredAt(LocalDateTime.now().plusHours(4));
+                mejaSessionRepository.save(activeSession);
+            }
+        } else {
+            MejaSession newSession = new MejaSession();
+            newSession.setMeja(meja);
+            newSession.setDeviceToken(deviceToken);
+            newSession.setExpiredAt(LocalDateTime.now().plusHours(4));
+            newSession.setActive(true);
+            mejaSessionRepository.save(newSession);
+            
+            isNewSession = true;
+        }
+
+        if (isNewSession) {
+            meja.setOccupied(true);
+            meja = mejaRepository.save(meja);
+            
+            try {
+                notificationService.publishMejaStatus(new MejaStatusWsPayload(
+                        meja.getMejaId(),
+                        meja.getNomorMeja(),
+                        true,
+                        "OCCUPIED"
+                ));
+            } catch (Exception e) {
+                log.error("Gagal mengirim notifikasi WebSocket meja occupied saat scan QR: mejaId={}", meja.getMejaId(), e);
+            }
+        }
+
         return new ScanMejaResponse(
                 meja.getMejaId(),
                 meja.getNomorMeja(),
                 meja.getZone() != null ? meja.getZone().name() : null,
                 meja.isActive(),
                 meja.isOccupied(),
-                isOpen
+                isOpen,
+                sessionToken
         );
     }
 
@@ -195,16 +260,25 @@ public class MejaServiceImpl implements MejaService {
         }
 
         meja.setOccupied(request.isOccupied());
+
+        if (!request.isOccupied()) {
+            mejaSessionRepository.deactivateSessionByMejaId(mejaId);
+        }
         Meja savedMeja = mejaRepository.save(meja);
+
+        // Tentukan status string untuk WebSocket payload
+        String wsStatus = savedMeja.isOccupied() ? "OCCUPIED" : "AVAILABLE";
 
         // Kirim event WebSocket real-time ke admin dashboard
         notificationService.publishMejaStatus(new MejaStatusWsPayload(
                 savedMeja.getMejaId(),
                 savedMeja.getNomorMeja(),
-                savedMeja.isOccupied()
+                savedMeja.isOccupied(),
+                wsStatus
         ));
 
-        log.info("Status meja diperbarui: nomor={}, isOccupied={}", savedMeja.getNomorMeja(), savedMeja.isOccupied());
+        log.info("Status meja diperbarui: nomor={}, isOccupied={}, wsStatus={}",
+                savedMeja.getNomorMeja(), savedMeja.isOccupied(), wsStatus);
         return mejaMapper.toResponse(savedMeja);
     }
 }

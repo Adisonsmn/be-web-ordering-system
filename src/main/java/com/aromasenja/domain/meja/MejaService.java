@@ -14,5 +14,6 @@ public interface MejaService {
     void softDeleteMeja(UUID mejaId);
     byte[] generateQrCode(UUID mejaId);
     ScanMejaResponse scanQr(UUID mejaId);
+    ScanMejaResponse scanQr(UUID mejaId, String deviceToken);
     MejaResponse updateStatus(UUID mejaId, UpdateMejaStatusRequest request);
 }

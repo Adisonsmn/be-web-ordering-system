@@ -114,4 +114,18 @@ public class AuthController {
                         userService.updateProfile(currentUser.getUserId(), request, currentUser))
         );
     }
+
+    @PatchMapping("/me/password")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Ubah kata sandi pengguna yang sedang login",
+            description = "Membutuhkan kata sandi lama untuk verifikasi dan kata sandi baru minimal 8 karakter.")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+
+        userService.changePassword(currentUser, request);
+        return ResponseEntity.ok(ApiResponse.success("Kata sandi berhasil diubah"));
+    }
 }
+

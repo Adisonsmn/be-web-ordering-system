@@ -41,6 +41,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final com.aromasenja.domain.meja.MejaRepository mejaRepository;
+    private final com.aromasenja.domain.meja.MejaSessionRepository mejaSessionRepository;
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
@@ -143,9 +145,28 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse loginAsGuest(GuestLoginRequest request) {
-        // TODO: Validasi mejaId ada di DB — akan diaktifkan saat domain/meja selesai
-        // MejaRepository akan di-inject dan dilakukan: mejaRepository.findById(request.tableId())
-        //     .orElseThrow(() -> new ResourceNotFoundException("Meja tidak ditemukan"));
+        com.aromasenja.domain.meja.entity.Meja meja = mejaRepository.findById(request.tableId())
+                .orElseThrow(() -> new ResourceNotFoundException("Meja tidak ditemukan"));
+
+        if (!meja.isActive()) {
+            throw new BusinessException("Meja tidak aktif atau sudah dihapus");
+        }
+
+        java.util.Optional<com.aromasenja.domain.meja.entity.MejaSession> activeSessionOpt = 
+                mejaSessionRepository.findByMeja_MejaIdAndIsActiveTrue(request.tableId());
+
+        if (activeSessionOpt.isPresent()) {
+            com.aromasenja.domain.meja.entity.MejaSession activeSession = activeSessionOpt.get();
+            if (!activeSession.getDeviceToken().equals(request.deviceToken())) {
+                if (!activeSession.getExpiredAt().isBefore(LocalDateTime.now())) {
+                    throw new com.aromasenja.common.exception.UnauthorizedException("Akses ditolak: Meja sedang digunakan oleh device lain");
+                }
+            }
+        } else {
+             // If there's no active session, they shouldn't be logging in as guest unless they scanned it.
+             // But if they scanned it successfully, the session should exist.
+             throw new com.aromasenja.common.exception.UnauthorizedException("Sesi meja tidak valid, silakan scan ulang QR Code");
+        }
 
         UUID sessionId = UUID.randomUUID();
         String guestToken = jwtService.generateGuestToken(sessionId, request.tableId());

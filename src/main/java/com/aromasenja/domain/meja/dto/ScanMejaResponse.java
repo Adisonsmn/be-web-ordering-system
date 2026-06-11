@@ -8,5 +8,10 @@ public record ScanMejaResponse(
     String zone,
     boolean isActive,
     boolean isOccupied,
-    boolean isOpen
-) {}
+    boolean isOpen,
+    String sessionToken
+) {
+    public ScanMejaResponse(UUID mejaId, Integer nomorMeja, String zone, boolean isActive, boolean isOccupied, boolean isOpen) {
+        this(mejaId, nomorMeja, zone, isActive, isOccupied, isOpen, null);
+    }
+}

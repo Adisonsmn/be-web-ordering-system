@@ -3,6 +3,7 @@ package com.aromasenja.domain.meja;
 import com.aromasenja.common.response.ApiResponse;
 import com.aromasenja.domain.meja.dto.CreateMejaRequest;
 import com.aromasenja.domain.meja.dto.MejaResponse;
+import com.aromasenja.domain.meja.dto.ScanMejaRequest;
 import com.aromasenja.domain.meja.dto.ScanMejaResponse;
 import com.aromasenja.domain.meja.dto.UpdateMejaStatusRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -27,6 +29,9 @@ import java.util.UUID;
 public class MejaController {
 
     private final MejaService mejaService;
+
+    @Value("${app.qr.base-url}")
+    private String qrBaseUrl;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -73,12 +78,27 @@ public class MejaController {
         return new ResponseEntity<>(qrBytes, headers, HttpStatus.OK);
     }
 
+    /**
+     * GET /scan/{mejaId} — Redirect browser ke frontend app.
+     * Endpoint ini menangani kasus QR code lama yang mungkin menyimpan URL backend.
+     * Browser yang membuka URL ini akan di-redirect ke frontend dengan parameter meja.
+     */
     @GetMapping("/scan/{mejaId}")
+    @Operation(summary = "Redirect QR scan ke frontend", description = "Redirect browser ke halaman frontend customer dengan parameter meja.")
+    public ResponseEntity<Void> scanRedirect(@PathVariable UUID mejaId) {
+        String frontendUrl = qrBaseUrl + "?meja=" + mejaId.toString();
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.LOCATION, frontendUrl);
+        return ResponseEntity.status(HttpStatus.FOUND).headers(headers).build();
+    }
+
+    @PostMapping("/scan/{mejaId}")
     @Operation(summary = "Scan QR Code meja (Public entrypoint)", description = "Memvalidasi scan meja dan mengembalikan informasi detail meja beserta status operasional restoran.")
     public ResponseEntity<ApiResponse<ScanMejaResponse>> scan(
-            @PathVariable UUID mejaId) {
+            @PathVariable UUID mejaId,
+            @Valid @RequestBody ScanMejaRequest request) {
         return ResponseEntity.ok(
-                ApiResponse.success("Scan meja berhasil", mejaService.scanQr(mejaId))
+                ApiResponse.success("Scan meja berhasil", mejaService.scanQr(mejaId, request.deviceToken()))
         );
     }
 

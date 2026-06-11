@@ -7,6 +7,8 @@ import com.aromasenja.domain.promo.dto.CreatePromoRequest;
 import com.aromasenja.domain.promo.dto.PromoResponse;
 import com.aromasenja.domain.promo.entity.Promo;
 import com.aromasenja.domain.promo.entity.TipeDiskon;
+import com.aromasenja.domain.pesanan.PesananRepository;
+import com.aromasenja.domain.promo.dto.PromoHistoryResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,9 +16,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,6 +39,7 @@ class PromoServiceImplTest {
 
     @Mock private PromoRepository promoRepository;
     @Mock private DetailPesananRepository detailPesananRepository;
+    @Mock private PesananRepository pesananRepository;
     @Mock private PromoMapper promoMapper;
 
     @InjectMocks
@@ -170,5 +178,19 @@ class PromoServiceImplTest {
 
         assertThat(mockPromo.isActive()).isFalse();
         verify(promoRepository).save(mockPromo);
+    }
+
+    @Test
+    @DisplayName("getPromoHistory — sukses")
+    void getPromoHistory_sukses() {
+        when(promoRepository.findById(promoId)).thenReturn(Optional.of(mockPromo));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<com.aromasenja.domain.pesanan.entity.Pesanan> page = new PageImpl<>(Collections.emptyList());
+        when(pesananRepository.findByPromoId(promoId, pageable)).thenReturn(page);
+
+        Page<PromoHistoryResponse> result = promoService.getPromoHistory(promoId, pageable);
+
+        assertThat(result).isNotNull();
+        verify(pesananRepository).findByPromoId(promoId, pageable);
     }
 }

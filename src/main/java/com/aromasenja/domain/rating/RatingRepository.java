@@ -23,6 +23,11 @@ public interface RatingRepository extends JpaRepository<Rating, UUID> {
             @Param("start") java.time.LocalDateTime start,
             @Param("end") java.time.LocalDateTime end);
 
+    @Query("SELECT COUNT(r) FROM Rating r WHERE r.isOverall = true AND r.createdAt BETWEEN :start AND :end")
+    long countOverallRatingByCreatedAtBetween(
+            @Param("start") java.time.LocalDateTime start,
+            @Param("end") java.time.LocalDateTime end);
+
     @Query(value = "SELECT bintang, COUNT(rating_id) as count FROM rating WHERE is_overall = true GROUP BY bintang", nativeQuery = true)
     List<Map<String, Object>> getRatingDistributionRaw();
 }

@@ -7,6 +7,7 @@ import com.aromasenja.common.security.UserPrincipal;
 import com.aromasenja.domain.config_resto.RestoConfigRepository;
 import com.aromasenja.domain.config_resto.entity.RestoConfig;
 import com.aromasenja.domain.meja.MejaRepository;
+import com.aromasenja.domain.meja.MejaSessionRepository;
 import com.aromasenja.domain.meja.entity.Meja;
 import com.aromasenja.domain.keranjang.KeranjangRepository;
 import com.aromasenja.domain.keranjang.entity.DetailKeranjang;
@@ -59,6 +60,7 @@ public class PesananServiceImpl implements PesananService {
     private final RestoConfigRepository restoConfigRepository;
     private final NotificationService notificationService;
     private final PesananMapper pesananMapper;
+    private final MejaSessionRepository mejaSessionRepository;
 
     @Value("${app.poin.rupiah-per-poin}")
     private BigDecimal rupiahPerPoin;
@@ -285,8 +287,9 @@ public class PesananServiceImpl implements PesananService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, UUID mejaId, LocalDate tanggal, Pageable pageable) {
-        Page<Pesanan> page = pesananRepository.findAllAdminFiltered(status, mejaId, tanggal, pageable);
+    public Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, UUID mejaId, LocalDate tanggal, LocalDateTime startDate, LocalDateTime endDate, String category, Pageable pageable) {
+        String statusStr = status != null ? status.name() : null;
+        Page<Pesanan> page = pesananRepository.findAllAdminFiltered(statusStr, mejaId, tanggal, startDate, endDate, category, pageable);
         return page.map(pesananMapper::toResponse);
     }
 
@@ -314,29 +317,15 @@ public class PesananServiceImpl implements PesananService {
         }
 
         pesanan.setStatus(request.status());
-        if (request.status() == StatusPesanan.PREPARING && request.estimasiMenit() != null) {
+        if (request.status() == StatusPesanan.PREPARING) {
+            if (request.estimasiMenit() == null || request.estimasiMenit() <= 0) {
+                throw new BusinessException("Estimasi waktu memasak wajib diisi saat menerima pesanan");
+            }
             pesanan.setEstimasiMenit(request.estimasiMenit());
         }
 
         if (request.status() == StatusPesanan.SERVED) {
             pesanan.setServed(true);
-            
-            // Kosongkan meja
-            Meja meja = pesanan.getMeja();
-            if (meja != null) {
-                meja.setOccupied(false);
-                mejaRepository.save(meja);
-                
-                try {
-                    notificationService.publishMejaStatus(new MejaStatusWsPayload(
-                            meja.getMejaId(),
-                            meja.getNomorMeja(),
-                            false
-                    ));
-                } catch (Exception e) {
-                    log.error("Gagal publish WS meja status untuk pesanan SERVED: mejaId={}", meja.getMejaId(), e);
-                }
-            }
         }
 
         Pesanan updated = pesananRepository.save(pesanan);
@@ -345,7 +334,7 @@ public class PesananServiceImpl implements PesananService {
         try {
             notificationService.publishStatusPesanan(pesananId, new PesananStatusWsPayload(
                     updated.getPesananId(),
-                    updated.getStatus().toDbValue(),
+                    updated.getStatus().name(),
                     updated.getStatus() == StatusPesanan.PREPARING ? updated.getEstimasiMenit() : null,
                     LocalDateTime.now()
             ));
@@ -378,22 +367,7 @@ public class PesananServiceImpl implements PesananService {
         pesanan.setStatus(StatusPesanan.SERVED);
         pesanan.setServed(true);
 
-        // Kosongkan meja
-        Meja meja = pesanan.getMeja();
-        if (meja != null) {
-            meja.setOccupied(false);
-            mejaRepository.save(meja);
-            
-            try {
-                notificationService.publishMejaStatus(new MejaStatusWsPayload(
-                        meja.getMejaId(),
-                        meja.getNomorMeja(),
-                        false
-                ));
-            } catch (Exception e) {
-                log.error("Gagal publish WS meja status untuk pembayaran pesanan: mejaId={}", meja.getMejaId(), e);
-            }
-        }
+        // Meja tidak direset otomatis — tamu mungkin masih ada di meja
 
         Pesanan saved = pesananRepository.save(pesanan);
 
@@ -418,7 +392,7 @@ public class PesananServiceImpl implements PesananService {
         try {
             notificationService.publishStatusPesanan(pesananId, new PesananStatusWsPayload(
                     saved.getPesananId(),
-                    saved.getStatus().toDbValue(),
+                    saved.getStatus().name(),
                     null,
                     LocalDateTime.now()
             ));
@@ -456,27 +430,12 @@ public class PesananServiceImpl implements PesananService {
             poinTransaksiRepository.save(refund);
         }
 
-        // Kosongkan status meja terkait
-        Meja meja = pesanan.getMeja();
-        if (meja != null) {
-            meja.setOccupied(false);
-            mejaRepository.save(meja);
-
-            try {
-                notificationService.publishMejaStatus(new MejaStatusWsPayload(
-                        meja.getMejaId(),
-                        meja.getNomorMeja(),
-                        false
-                ));
-            } catch (Exception e) {
-                log.error("Gagal publish WS cancel meja status: mejaId={}", meja.getMejaId(), e);
-            }
-        }
+        // Meja tidak direset otomatis saat cancel
 
         try {
             notificationService.publishStatusPesanan(pesananId, new PesananStatusWsPayload(
                     pesanan.getPesananId(),
-                    StatusPesanan.CANCELLED.toDbValue(),
+                    StatusPesanan.CANCELLED.name(),
                     null,
                     LocalDateTime.now()
             ));

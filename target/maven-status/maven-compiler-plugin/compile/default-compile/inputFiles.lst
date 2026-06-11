@@ -22,6 +22,7 @@ F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\sr
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\AuthController.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\AuthService.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\AuthServiceImpl.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\dto\ChangePasswordRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\dto\GuestLoginRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\dto\LoginRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\auth\dto\LoginResponse.java
@@ -64,15 +65,18 @@ F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\sr
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\laporan\LaporanServiceImpl.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\dto\CreateMejaRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\dto\MejaResponse.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\dto\ScanMejaRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\dto\ScanMejaResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\dto\UpdateMejaStatusRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\entity\Meja.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\entity\MejaSession.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\entity\ZoneMeja.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaController.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaMapper.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaRepository.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaService.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaServiceImpl.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\meja\MejaSessionRepository.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\menu\dto\CreateMenuRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\menu\dto\MenuAvailabilityWsPayload.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\menu\dto\MenuDetailResponse.java
@@ -118,6 +122,7 @@ F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\sr
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\poin\PoinServiceImpl.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\poin\PoinTransaksiRepository.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\promo\dto\CreatePromoRequest.java
+F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\promo\dto\PromoHistoryResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\promo\dto\PromoResponse.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\promo\dto\UpdatePromoRequest.java
 F:\Kuliah\MateriKuliah\Semester_4\PBO\Tubes\WebOrderingv2\aroma-senja-backend\src\main\java\com\aromasenja\domain\promo\entity\Promo.java

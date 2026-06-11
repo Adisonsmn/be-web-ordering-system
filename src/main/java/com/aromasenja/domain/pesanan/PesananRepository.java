@@ -28,18 +28,51 @@ public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
            countQuery = "SELECT COUNT(p) FROM Pesanan p WHERE p.client.clientId = :clientId")
     Page<Pesanan> findByClientClientIdOrderByTanggalPesananDesc(@Param("clientId") UUID clientId, Pageable pageable);
 
-    @Query(value = "SELECT p FROM Pesanan p LEFT JOIN FETCH p.meja m LEFT JOIN FETCH p.client c WHERE " +
-           "(:status IS NULL OR p.status = :status) AND " +
-           "(:mejaId IS NULL OR p.meja.mejaId = :mejaId) AND " +
-           "(:tanggal IS NULL OR CAST(p.tanggalPesanan AS date) = :tanggal)",
-           countQuery = "SELECT COUNT(p) FROM Pesanan p WHERE " +
-           "(:status IS NULL OR p.status = :status) AND " +
-           "(:mejaId IS NULL OR p.meja.mejaId = :mejaId) AND " +
-           "(:tanggal IS NULL OR CAST(p.tanggalPesanan AS date) = :tanggal)")
+    @Query(value = "SELECT DISTINCT p FROM Pesanan p " +
+           "JOIN p.detailPesanan dp " +
+           "LEFT JOIN FETCH p.client " +
+           "LEFT JOIN FETCH p.meja " +
+           "WHERE dp.menu.promo.promoId = :promoId " +
+           "ORDER BY p.tanggalPesanan DESC",
+           countQuery = "SELECT COUNT(DISTINCT p) FROM Pesanan p " +
+           "JOIN p.detailPesanan dp " +
+           "WHERE dp.menu.promo.promoId = :promoId")
+    Page<Pesanan> findByPromoId(@Param("promoId") UUID promoId, Pageable pageable);
+
+    @Query(value =
+            "SELECT DISTINCT p.* FROM pesanan p " +
+            "LEFT JOIN meja m ON p.meja_id = m.meja_id " +
+            "LEFT JOIN client c ON p.client_id = c.client_id " +
+            "WHERE (:status IS NULL OR UPPER(p.status) = UPPER(CAST(:status AS VARCHAR))) " +
+            "  AND (:mejaId IS NULL OR p.meja_id = CAST(:mejaId AS UUID)) " +
+            "  AND (:tanggal IS NULL OR DATE(p.tanggal_pesanan) = CAST(:tanggal AS DATE)) " +
+            "  AND (:startDate IS NULL OR p.tanggal_pesanan >= CAST(:startDate AS TIMESTAMP)) " +
+            "  AND (:endDate IS NULL OR p.tanggal_pesanan <= CAST(:endDate AS TIMESTAMP)) " +
+            "  AND (:category IS NULL OR EXISTS (" +
+            "      SELECT 1 FROM detail_pesanan dp2 JOIN menus mn ON dp2.menu_id = mn.menu_id " +
+            "      WHERE dp2.pesanan_id = p.pesanan_id AND UPPER(mn.category) = UPPER(CAST(:category AS VARCHAR))" +
+            "  )) " +
+            "ORDER BY p.tanggal_pesanan DESC",
+            countQuery =
+            "SELECT COUNT(DISTINCT p.pesanan_id) FROM pesanan p " +
+            "LEFT JOIN meja m ON p.meja_id = m.meja_id " +
+            "WHERE (:status IS NULL OR UPPER(p.status) = UPPER(CAST(:status AS VARCHAR))) " +
+            "  AND (:mejaId IS NULL OR p.meja_id = CAST(:mejaId AS UUID)) " +
+            "  AND (:tanggal IS NULL OR DATE(p.tanggal_pesanan) = CAST(:tanggal AS DATE)) " +
+            "  AND (:startDate IS NULL OR p.tanggal_pesanan >= CAST(:startDate AS TIMESTAMP)) " +
+            "  AND (:endDate IS NULL OR p.tanggal_pesanan <= CAST(:endDate AS TIMESTAMP)) " +
+            "  AND (:category IS NULL OR EXISTS (" +
+            "      SELECT 1 FROM detail_pesanan dp2 JOIN menus mn ON dp2.menu_id = mn.menu_id " +
+            "      WHERE dp2.pesanan_id = p.pesanan_id AND UPPER(mn.category) = UPPER(CAST(:category AS VARCHAR))" +
+            "  ))",
+            nativeQuery = true)
     Page<Pesanan> findAllAdminFiltered(
-            @Param("status") StatusPesanan status,
+            @Param("status") String status,
             @Param("mejaId") UUID mejaId,
             @Param("tanggal") LocalDate tanggal,
+            @Param("startDate") java.time.LocalDateTime startDate,
+            @Param("endDate") java.time.LocalDateTime endDate,
+            @Param("category") String category,
             Pageable pageable);
 
     @Query("SELECT COALESCE(SUM(p.totalHarga), 0) FROM Pesanan p WHERE p.status = :status AND p.tanggalPesanan BETWEEN :start AND :end")

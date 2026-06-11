@@ -16,5 +16,8 @@ import java.util.UUID;
 public record GuestLoginRequest(
 
         @NotNull(message = "Table ID tidak boleh kosong")
-        UUID tableId
+        UUID tableId,
+
+        @NotNull(message = "Device token tidak boleh kosong")
+        String deviceToken
 ) {}

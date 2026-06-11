@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -20,11 +21,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/pesanan")
 @RequiredArgsConstructor
+@Slf4j
 @Tag(name = "Pesanan & Pembayaran", description = "Endpoint untuk pemesanan mandiri dan pengelolaan order")
 public class PesananController {
 
@@ -83,8 +86,23 @@ public class PesananController {
             @RequestParam(required = false) StatusPesanan status,
             @RequestParam(required = false) UUID mejaId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tanggal,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String category,
             @PageableDefault(size = 10) Pageable pageable) {
-        Page<PesananResponse> response = pesananService.getAllPesananAdmin(status, mejaId, tanggal, pageable);
+        java.time.LocalDateTime startLdt = null;
+        java.time.LocalDateTime endLdt = null;
+        try {
+            if (startDate != null && !startDate.isBlank()) {
+                startLdt = OffsetDateTime.parse(startDate).toLocalDateTime();
+            }
+            if (endDate != null && !endDate.isBlank()) {
+                endLdt = OffsetDateTime.parse(endDate).toLocalDateTime();
+            }
+        } catch (Exception e) {
+            log.warn("Gagal parse startDate/endDate: startDate={}, endDate={}", startDate, endDate, e);
+        }
+        Page<PesananResponse> response = pesananService.getAllPesananAdmin(status, mejaId, tanggal, startLdt, endLdt, category, pageable);
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil daftar pesanan", response));
     }
 

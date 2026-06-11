@@ -32,7 +32,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         String[] origins = allowedOrigins.split(",");
-        String[] additional = {"http://localhost:*", "https://*.supabase.co"};
+        String[] additional = {"http://localhost:*", "http://127.0.0.1:*", "https://*.supabase.co"};
         String[] allOrigins = new String[origins.length + additional.length];
         System.arraycopy(origins, 0, allOrigins, 0, origins.length);
         System.arraycopy(additional, 0, allOrigins, origins.length, additional.length);

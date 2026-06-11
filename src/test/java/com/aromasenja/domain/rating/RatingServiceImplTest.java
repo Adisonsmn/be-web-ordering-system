@@ -125,19 +125,34 @@ class RatingServiceImplTest {
         RatingResponse response = ratingService.submitRating(request, clientPrincipal);
 
         assertThat(response).isNotNull();
-        assertThat(response.bintang()).isEqualTo(5);
+        assertThat(response.bintang()).isEqualTo((short) 5);
         assertThat(response.ulasan()).isEqualTo("Pelayanan baik");
         verify(ratingRepository, times(2)).save(any(Rating.class));
     }
 
     @Test
-    @DisplayName("Submit Rating - Fail Guest")
-    void submitRating_FailGuest() {
+    @DisplayName("Submit Rating - Success Guest")
+    void submitRating_SuccessGuest() {
         CreateRatingRequest request = new CreateRatingRequest(pesananId, 5, "OK", true, Collections.emptyList());
 
-        assertThatThrownBy(() -> ratingService.submitRating(request, guestPrincipal))
-                .isInstanceOf(UnauthorizedException.class)
-                .hasMessageContaining("Guest tidak diperbolehkan");
+        when(pesananRepository.findById(pesananId)).thenReturn(Optional.of(pesanan));
+        when(ratingRepository.existsByPesananPesananId(pesananId)).thenReturn(false);
+
+        Rating mockOverall = new Rating();
+        mockOverall.setBintang((short) 5);
+        mockOverall.setUlasan("OK");
+        mockOverall.setOverall(true);
+        when(ratingRepository.save(any(Rating.class))).thenReturn(mockOverall);
+
+        RatingResponse mockRes = new RatingResponse(
+                UUID.randomUUID(), null, "Anonymous", null, pesananId, (short) 5, "OK", true, true, null
+        );
+        when(ratingMapper.toResponse(any(Rating.class))).thenReturn(mockRes);
+
+        RatingResponse response = ratingService.submitRating(request, guestPrincipal);
+
+        assertThat(response).isNotNull();
+        assertThat(response.clientId()).isNull();
     }
 
     @Test

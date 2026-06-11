@@ -57,6 +57,7 @@ class LaporanServiceImplTest {
         when(pesananRepository.countByTanggalPesananBetween(any(), any())).thenReturn(5L);
         when(mejaRepository.countByIsActiveTrueAndIsOccupiedTrue()).thenReturn(0L);
         when(ratingRepository.getAverageRatingByCreatedAtBetween(any(), any())).thenReturn(4.2);
+        when(ratingRepository.countOverallRatingByCreatedAtBetween(any(), any())).thenReturn(3L);
         when(pesananRepository.findByTanggalPesananBetween(any(), any())).thenReturn(Collections.emptyList());
         when(pesananRepository.findByStatusIn(any())).thenReturn(Collections.emptyList());
         when(detailPesananRepository.getTotalDiskonPromoBetween(any(), any())).thenReturn(BigDecimal.ZERO);
@@ -72,7 +73,7 @@ class LaporanServiceImplTest {
     @Test
     @DisplayName("Get Pendapatan Trend - Success Bulanan")
     void getPendapatanTrend_Bulanan_Success() {
-        when(pesananRepository.findByTanggalPesananBetween(any(), any())).thenReturn(Collections.emptyList());
+        when(pesananRepository.findDailyRevenueBetween(any(), any())).thenReturn(Collections.emptyList());
 
         List<PendapatanTrendResponse> response = laporanService.getPendapatanTrend("bulanan", 5, 2026);
 
@@ -109,6 +110,7 @@ class LaporanServiceImplTest {
         when(pesananRepository.countByTanggalPesananBetween(any(), any())).thenReturn(5L);
         when(mejaRepository.countByIsActiveTrueAndIsOccupiedTrue()).thenReturn(0L);
         when(ratingRepository.getAverageRatingByCreatedAtBetween(any(), any())).thenReturn(4.2);
+        when(ratingRepository.countOverallRatingByCreatedAtBetween(any(), any())).thenReturn(3L);
         when(pesananRepository.findByTanggalPesananBetween(any(), any())).thenReturn(Collections.emptyList());
         when(pesananRepository.findByStatusIn(any())).thenReturn(Collections.emptyList());
         when(detailPesananRepository.getTotalDiskonPromoBetween(any(), any())).thenReturn(BigDecimal.ZERO);

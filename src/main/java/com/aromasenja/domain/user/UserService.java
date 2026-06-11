@@ -33,4 +33,13 @@ public interface UserService extends UserDetailsService {
      * @return profil yang sudah diupdate
      */
     UserProfileResponse updateProfile(UUID userId, UpdateProfileRequest request, UserPrincipal currentUser);
+
+    /**
+     * Mengubah kata sandi pengguna yang sedang login.
+     *
+     * @param currentUser principal dari JWT token
+     * @param request     data password lama dan baru
+     */
+    void changePassword(UserPrincipal currentUser, com.aromasenja.domain.auth.dto.ChangePasswordRequest request);
 }
+

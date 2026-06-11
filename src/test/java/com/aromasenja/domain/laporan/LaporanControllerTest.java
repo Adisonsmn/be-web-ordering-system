@@ -40,7 +40,7 @@ class LaporanControllerTest {
     @BeforeEach
     void setUp() {
         mockDashboardResponse = new DashboardStatsResponse(
-                BigDecimal.valueOf(250000), 10, 4, 4.5, BigDecimal.valueOf(25000),
+                BigDecimal.valueOf(250000), 10, 8, 4, 4.5, 3, BigDecimal.valueOf(25000),
                 50, BigDecimal.valueOf(5000), Collections.emptyList()
         );
     }

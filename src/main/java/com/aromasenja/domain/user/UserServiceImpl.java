@@ -2,7 +2,9 @@ package com.aromasenja.domain.user;
 
 import com.aromasenja.common.exception.ResourceNotFoundException;
 import com.aromasenja.common.exception.UnauthorizedException;
+import com.aromasenja.common.exception.BusinessException;
 import com.aromasenja.common.security.UserPrincipal;
+import com.aromasenja.domain.auth.dto.ChangePasswordRequest;
 import com.aromasenja.domain.user.dto.UpdateProfileRequest;
 import com.aromasenja.domain.user.dto.UserProfileResponse;
 import com.aromasenja.domain.user.entity.Client;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,8 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
+    private final PasswordEncoder passwordEncoder;
+
 
     // ── UserDetailsService ───────────────────────────────────────────────────
 
@@ -91,7 +96,23 @@ public class UserServiceImpl implements UserService {
         return mapToResponse(user, client);
     }
 
+    @Override
+    @Transactional
+    public void changePassword(UserPrincipal currentUser, ChangePasswordRequest request) {
+        User user = userRepository.findById(currentUser.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User tidak ditemukan"));
+
+        if (!passwordEncoder.matches(request.oldPassword(), user.getPassword())) {
+            throw new BusinessException("Password lama tidak sesuai");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
+        log.info("Password berhasil diubah untuk user: {}", currentUser.getUserId());
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
+
 
     private UserProfileResponse mapToResponse(User user, Client client) {
         return new UserProfileResponse(

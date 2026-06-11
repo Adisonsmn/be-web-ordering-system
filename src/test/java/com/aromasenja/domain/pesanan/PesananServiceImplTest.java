@@ -256,6 +256,8 @@ class PesananServiceImplTest {
     void cancelPesanan_sukses() {
         pesanan.setPoinDigunakan(10);
         pesanan.setPotonganPoin(BigDecimal.valueOf(10000));
+        // Set meja to occupied initially
+        meja.setOccupied(true);
         when(pesananRepository.findById(pesananId)).thenReturn(Optional.of(pesanan));
         when(pesananRepository.save(any(Pesanan.class))).thenReturn(pesanan);
 
@@ -263,9 +265,7 @@ class PesananServiceImplTest {
 
         assertThat(pesanan.getStatus()).isEqualTo(StatusPesanan.CANCELLED);
         assertThat(client.getTotalPoint()).isEqualTo(20); // 10 poin dibalikkan
-        assertThat(meja.isOccupied()).isFalse();
-        verify(mejaRepository).save(meja);
-        verify(notificationService).publishMejaStatus(any());
+        assertThat(meja.isOccupied()).isTrue(); // Meja tetap terisi
         verify(notificationService).publishStatusPesanan(eq(pesananId), any());
     }
 }

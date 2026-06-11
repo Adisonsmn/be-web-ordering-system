@@ -149,4 +149,19 @@ class PromoControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /api/promo/{promoId}/history — 200 OK untuk ADMIN")
+    void getPromoHistory_200_admin() throws Exception {
+        org.springframework.data.domain.Page<com.aromasenja.domain.promo.dto.PromoHistoryResponse> historyPage =
+                new org.springframework.data.domain.PageImpl<>(java.util.Collections.emptyList());
+        when(promoService.getPromoHistory(eq(promoId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(historyPage);
+
+        mockMvc.perform(get("/api/promo/{promoId}/history", promoId)
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
 }

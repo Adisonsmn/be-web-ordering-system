@@ -3,11 +3,15 @@ package com.aromasenja.domain.promo;
 import com.aromasenja.common.response.ApiResponse;
 import com.aromasenja.domain.promo.dto.CreatePromoRequest;
 import com.aromasenja.domain.promo.dto.PromoResponse;
+import com.aromasenja.domain.promo.dto.PromoHistoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -70,5 +74,16 @@ public class PromoController {
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID promoId) {
         promoService.deletePromo(promoId);
         return ResponseEntity.ok(ApiResponse.success("Promo berhasil dinonaktifkan (soft delete)", null));
+    }
+
+    @GetMapping("/{promoId}/history")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Ambil riwayat penggunaan promo (Admin Only)")
+    public ResponseEntity<ApiResponse<Page<PromoHistoryResponse>>> getPromoHistory(
+            @PathVariable UUID promoId,
+            @PageableDefault(size = 10) Pageable pageable) {
+        Page<PromoHistoryResponse> history = promoService.getPromoHistory(promoId, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil riwayat penggunaan promo", history));
     }
 }

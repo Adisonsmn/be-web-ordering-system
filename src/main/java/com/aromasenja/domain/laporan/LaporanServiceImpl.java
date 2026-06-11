@@ -63,12 +63,15 @@ public class LaporanServiceImpl implements LaporanService {
 
         // 4. Avg rating hari ini
         double avgRating = ratingRepository.getAverageRatingByCreatedAtBetween(start, end);
+        long totalUlasanHariIni = ratingRepository.countOverallRatingByCreatedAtBetween(start, end);
 
         // 5. Avg order value & diskon/poin stats
         List<Pesanan> todayOrders = pesananRepository.findByTanggalPesananBetween(start, end);
         List<Pesanan> servedToday = todayOrders.stream()
                 .filter(p -> p.getStatus() == StatusPesanan.SERVED)
                 .toList();
+
+        long totalPesananSelesai = servedToday.size();
 
         BigDecimal avgOrderValue = BigDecimal.ZERO;
         if (!servedToday.isEmpty()) {
@@ -94,8 +97,10 @@ public class LaporanServiceImpl implements LaporanService {
         return new DashboardStatsResponse(
                 pendapatan,
                 totalPesanan,
+                totalPesananSelesai,
                 mejaAktif,
                 avgRating,
+                totalUlasanHariIni,
                 avgOrderValue,
                 totalPoinRedeemed,
                 totalDiskonPromo,
@@ -279,15 +284,22 @@ public class LaporanServiceImpl implements LaporanService {
         }
 
         List<Map<String, Object>> aggResult = detailPesananRepository.getMenuTerlarisAggregated(
-                start, end, category, org.springframework.data.domain.PageRequest.of(0, limit));
+                start, end, category, limit);
+
 
         return aggResult.stream().map(row -> {
-            UUID menuId = (UUID) row.get("menuId");
-            String menuName = (String) row.get("menuName");
-            long totalQty = ((Number) row.get("totalQty")).longValue();
-            BigDecimal totalIncome = (BigDecimal) row.get("totalIncome");
+            // Native query mengembalikan key lowercase dari PostgreSQL
+            Object rawMenuId = row.get("menuid") != null ? row.get("menuid") : row.get("menuId");
+            UUID menuId = rawMenuId instanceof UUID ? (UUID) rawMenuId : UUID.fromString(rawMenuId.toString());
+            Object rawMenuName = row.get("menuname") != null ? row.get("menuname") : row.get("menuName");
+            String menuName = rawMenuName != null ? rawMenuName.toString() : "";
+            Object rawQty = row.get("totalqty") != null ? row.get("totalqty") : row.get("totalQty");
+            long totalQty = rawQty != null ? ((Number) rawQty).longValue() : 0L;
+            Object rawIncome = row.get("totalincome") != null ? row.get("totalincome") : row.get("totalIncome");
+            BigDecimal totalIncome = rawIncome != null ? new BigDecimal(rawIncome.toString()) : BigDecimal.ZERO;
             return new MenuTerlarisResponse(menuId, menuName, totalQty, totalIncome);
         }).toList();
+
     }
 
     @Override

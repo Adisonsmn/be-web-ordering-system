@@ -48,6 +48,7 @@ class MejaServiceImplTest {
     @Mock private RestoConfigRepository restoConfigRepository;
     @Mock private AdminRepository adminRepository;
     @Mock private NotificationService notificationService;
+    @Mock private MejaSessionRepository mejaSessionRepository;
 
     @InjectMocks
     private MejaServiceImpl mejaService;
@@ -92,7 +93,8 @@ class MejaServiceImplTest {
         when(mejaMapper.toResponseList(anyList())).thenAnswer(invocation -> {
             List<Meja> list = invocation.getArgument(0);
             return list.stream().map(m -> new MejaResponse(
-                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl()
+                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl(),
+                    m.isOccupied() ? "OCCUPIED" : "AVAILABLE"
             )).toList();
         });
 
@@ -111,7 +113,7 @@ class MejaServiceImplTest {
     void createMeja_sukses_nomorBaru() {
         // Arrange
         CreateMejaRequest request = new CreateMejaRequest(12, "OUTDOOR");
-        when(mejaRepository.existsByNomorMeja(12)).thenReturn(false);
+        when(mejaRepository.findByNomorMeja(12)).thenReturn(Optional.empty());
 
         // Mock Security Context untuk set created_by
         UserPrincipal principal = UserPrincipal.fromClaims(userId, Role.ADMIN);
@@ -132,7 +134,8 @@ class MejaServiceImplTest {
         when(mejaMapper.toResponse(any(Meja.class))).thenAnswer(i -> {
             Meja m = i.getArgument(0);
             return new MejaResponse(
-                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl()
+                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl(),
+                    m.isOccupied() ? "OCCUPIED" : "AVAILABLE"
             );
         });
 
@@ -143,7 +146,7 @@ class MejaServiceImplTest {
         assertThat(response).isNotNull();
         assertThat(response.nomorMeja()).isEqualTo(12);
         assertThat(response.zone()).isEqualTo("OUTDOOR");
-        assertThat(response.qrCodeUrl()).startsWith("http://localhost:8080/api/meja/scan/");
+        assertThat(response.qrCodeUrl()).startsWith("http://localhost:8080/api/meja/scan?meja=");
         verify(mejaRepository, times(2)).save(any(Meja.class));
     }
 
@@ -152,7 +155,8 @@ class MejaServiceImplTest {
     void createMeja_gagal_nomorSudahAda() {
         // Arrange
         CreateMejaRequest request = new CreateMejaRequest(5, "INDOOR");
-        when(mejaRepository.existsByNomorMeja(5)).thenReturn(true);
+        mockMeja.setActive(true);
+        when(mejaRepository.findByNomorMeja(5)).thenReturn(Optional.of(mockMeja));
 
         // Act & Assert
         assertThatThrownBy(() -> mejaService.createMeja(request))
@@ -172,6 +176,7 @@ class MejaServiceImplTest {
 
         // Assert
         verify(mejaRepository).softDelete(mejaId);
+        verify(mejaSessionRepository).deactivateSessionByMejaId(mejaId);
     }
 
     @Test
@@ -230,8 +235,9 @@ class MejaServiceImplTest {
         // Arrange
         RestoConfig config = new RestoConfig();
         config.setOpen(true);
-        when(mejaRepository.findById(mejaId)).thenReturn(Optional.of(mockMeja));
+        when(mejaRepository.findByIdWithLock(mejaId)).thenReturn(Optional.of(mockMeja));
         when(restoConfigRepository.findFirstBy()).thenReturn(Optional.of(config));
+        when(mejaRepository.save(any(Meja.class))).thenAnswer(i -> i.getArgument(0));
 
         // Act
         ScanMejaResponse response = mejaService.scanQr(mejaId);
@@ -248,7 +254,7 @@ class MejaServiceImplTest {
     void scanQr_gagal_mejaTidakAktif() {
         // Arrange
         mockMeja.setActive(false);
-        when(mejaRepository.findById(mejaId)).thenReturn(Optional.of(mockMeja));
+        when(mejaRepository.findByIdWithLock(mejaId)).thenReturn(Optional.of(mockMeja));
 
         // Act & Assert
         assertThatThrownBy(() -> mejaService.scanQr(mejaId))
@@ -266,7 +272,8 @@ class MejaServiceImplTest {
         when(mejaMapper.toResponse(any(Meja.class))).thenAnswer(i -> {
             Meja m = i.getArgument(0);
             return new MejaResponse(
-                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl()
+                    m.getMejaId(), m.getNomorMeja(), m.getZone().name(), m.isActive(), m.isOccupied(), m.getQrCodeUrl(),
+                    m.isOccupied() ? "OCCUPIED" : "AVAILABLE"
             );
         });
 

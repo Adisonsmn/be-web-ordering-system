@@ -3,13 +3,19 @@ package com.aromasenja.domain.promo;
 import com.aromasenja.common.exception.BusinessException;
 import com.aromasenja.common.exception.ResourceNotFoundException;
 import com.aromasenja.domain.pesanan.DetailPesananRepository;
+import com.aromasenja.domain.pesanan.PesananRepository;
+import com.aromasenja.domain.pesanan.entity.Pesanan;
 import com.aromasenja.domain.promo.dto.CreatePromoRequest;
 import com.aromasenja.domain.promo.dto.PromoResponse;
+import com.aromasenja.domain.promo.dto.PromoHistoryResponse;
 import com.aromasenja.domain.promo.entity.Promo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +27,7 @@ public class PromoServiceImpl implements PromoService {
 
     private final PromoRepository promoRepository;
     private final DetailPesananRepository detailPesananRepository;
+    private final PesananRepository pesananRepository;
     private final PromoMapper promoMapper;
 
     @Override
@@ -96,5 +103,36 @@ public class PromoServiceImpl implements PromoService {
         // Soft delete
         promo.setActive(false);
         promoRepository.save(promo);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<PromoHistoryResponse> getPromoHistory(UUID promoId, Pageable pageable) {
+        Promo promo = promoRepository.findById(promoId)
+                .orElseThrow(() -> new ResourceNotFoundException("Promo tidak ditemukan"));
+
+        Page<Pesanan> pesananPage = pesananRepository.findByPromoId(promoId, pageable);
+
+        return pesananPage.map(pesanan -> {
+            String clientName = (pesanan.getClient() != null && pesanan.getClient().getUser() != null)
+                    ? pesanan.getClient().getUser().getName()
+                    : "Guest";
+            Integer nomorMeja = pesanan.getMeja() != null ? pesanan.getMeja().getNomorMeja() : null;
+
+            BigDecimal totalPotongan = pesanan.getDetailPesanan().stream()
+                    .filter(dp -> dp.getMenu().getPromo() != null && dp.getMenu().getPromo().getPromoId().equals(promoId))
+                    .map(dp -> dp.getHargaSnapshot().subtract(dp.getHargaSetelahDiskon()).multiply(BigDecimal.valueOf(dp.getQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            return new PromoHistoryResponse(
+                    pesanan.getPesananId(),
+                    pesanan.getKodePesanan(),
+                    clientName,
+                    nomorMeja,
+                    pesanan.getTanggalPesanan(),
+                    pesanan.getTotalHarga(),
+                    totalPotongan
+            );
+        });
     }
 }

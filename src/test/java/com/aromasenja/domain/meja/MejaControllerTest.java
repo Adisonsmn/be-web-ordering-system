@@ -4,6 +4,7 @@ import com.aromasenja.common.exception.GlobalExceptionHandler;
 import com.aromasenja.common.security.JwtService;
 import com.aromasenja.domain.meja.dto.CreateMejaRequest;
 import com.aromasenja.domain.meja.dto.MejaResponse;
+import com.aromasenja.domain.meja.dto.ScanMejaRequest;
 import com.aromasenja.domain.meja.dto.ScanMejaResponse;
 import com.aromasenja.domain.meja.dto.UpdateMejaStatusRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,7 +53,7 @@ class MejaControllerTest {
     void setUp() {
         mejaId = UUID.randomUUID();
         mockMejaResponse = new MejaResponse(
-                mejaId, 5, "INDOOR", true, false, "http://localhost:8080/api/meja/scan/" + mejaId
+                mejaId, 5, "INDOOR", true, false, "http://localhost:8080/api/meja/scan/" + mejaId, "AVAILABLE"
         );
     }
 
@@ -86,7 +87,7 @@ class MejaControllerTest {
     void POST_meja_201_bodyValid() throws Exception {
         CreateMejaRequest request = new CreateMejaRequest(10, "INDOOR");
         MejaResponse createdMeja = new MejaResponse(
-                UUID.randomUUID(), 10, "INDOOR", true, false, "http://localhost:8080/api/meja/scan/some-id"
+                UUID.randomUUID(), 10, "INDOOR", true, false, "http://localhost:8080/api/meja/scan/some-id", "AVAILABLE"
         );
         when(mejaService.createMeja(any(CreateMejaRequest.class))).thenReturn(createdMeja);
 
@@ -150,21 +151,25 @@ class MejaControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/meja/scan/{mejaId} — 200 OK untuk akses publik (tanpa token)")
+    @DisplayName("POST /api/meja/scan/{mejaId} — 200 OK untuk akses publik (tanpa token)")
     @WithMockUser
-    void GET_scan_200_publicAccess() throws Exception {
+    void POST_scan_200_publicAccess() throws Exception {
+        ScanMejaRequest request = new ScanMejaRequest("test-device-token");
         ScanMejaResponse scanResponse = new ScanMejaResponse(
-                mejaId, 5, "INDOOR", true, false, true
+                mejaId, 5, "INDOOR", true, false, true, "test-device-token"
         );
-        when(mejaService.scanQr(mejaId)).thenReturn(scanResponse);
+        when(mejaService.scanQr(eq(mejaId), eq("test-device-token"))).thenReturn(scanResponse);
 
-        mockMvc.perform(get("/api/meja/scan/{mejaId}", mejaId))
+        mockMvc.perform(post("/api/meja/scan/{mejaId}", mejaId)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.nomorMeja").value(5))
                 .andExpect(jsonPath("$.data.isOpen").value(true));
 
-        verify(mejaService).scanQr(mejaId);
+        verify(mejaService).scanQr(eq(mejaId), eq("test-device-token"));
     }
 
     @Test
@@ -173,7 +178,7 @@ class MejaControllerTest {
     void PATCH_status_200_updateOccupied() throws Exception {
         UpdateMejaStatusRequest request = new UpdateMejaStatusRequest(true);
         MejaResponse updatedMeja = new MejaResponse(
-                mejaId, 5, "INDOOR", true, true, "http://localhost:8080/api/meja/scan/" + mejaId
+                mejaId, 5, "INDOOR", true, true, "http://localhost:8080/api/meja/scan/" + mejaId, "OCCUPIED"
         );
         when(mejaService.updateStatus(eq(mejaId), any(UpdateMejaStatusRequest.class))).thenReturn(updatedMeja);
 

@@ -126,7 +126,7 @@ class PesananControllerTest {
     @WithMockUser(roles = "ADMIN")
     @DisplayName("GET /api/pesanan — 200 OK untuk Admin")
     void getAllAdmin_200_admin() throws Exception {
-        when(pesananService.getAllPesananAdmin(any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of(mockResponse)));
+        when(pesananService.getAllPesananAdmin(any(), any(), any(), any(), any(), any(), any())).thenReturn(new PageImpl<>(List.of(mockResponse)));
 
         mockMvc.perform(get("/api/pesanan")
                 .contentType(MediaType.APPLICATION_JSON))

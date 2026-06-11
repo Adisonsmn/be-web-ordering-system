@@ -10,5 +10,10 @@ import java.util.UUID;
 public record MejaStatusWsPayload(
         UUID mejaId,
         Integer nomorMeja,
-        boolean isOccupied   // true = sedang terisi oleh tamu
-) {}
+        boolean isOccupied,   // true = sedang terisi oleh tamu
+        String status         // AVAILABLE, OCCUPIED
+) {
+    public MejaStatusWsPayload(UUID mejaId, Integer nomorMeja, boolean isOccupied) {
+        this(mejaId, nomorMeja, isOccupied, isOccupied ? "OCCUPIED" : "AVAILABLE");
+    }
+}

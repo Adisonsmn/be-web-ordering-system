@@ -11,6 +11,8 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -96,6 +98,24 @@ public class GlobalExceptionHandler {
         log.warn("[401] {} {} — {}", request.getMethod(), request.getRequestURI(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error("Autentikasi gagal: " + ex.getMessage()));
+    }
+
+    /** 405 — HTTP method tidak didukung (misalnya GET ke endpoint POST) */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        log.warn("[405] {} {} — Method tidak didukung", request.getMethod(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error("HTTP method '" + request.getMethod() + "' tidak didukung untuk endpoint ini"));
+    }
+
+    /** 404 — Route tidak ditemukan */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoHandler(
+            NoHandlerFoundException ex, HttpServletRequest request) {
+        log.warn("[404] {} {} — Route tidak ditemukan", request.getMethod(), request.getRequestURI());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Endpoint tidak ditemukan: " + request.getRequestURI()));
     }
 
     /** 500 — Fallback untuk exception yang tidak terduga */
