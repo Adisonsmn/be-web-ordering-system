@@ -2,6 +2,7 @@ package com.aromasenja.domain.promo;
 
 import com.aromasenja.common.exception.BusinessException;
 import com.aromasenja.common.exception.ResourceNotFoundException;
+import com.aromasenja.domain.menu.MenuRepository;
 import com.aromasenja.domain.pesanan.DetailPesananRepository;
 import com.aromasenja.domain.promo.dto.CreatePromoRequest;
 import com.aromasenja.domain.promo.dto.PromoResponse;
@@ -38,6 +39,7 @@ import static org.mockito.Mockito.*;
 class PromoServiceImplTest {
 
     @Mock private PromoRepository promoRepository;
+    @Mock private MenuRepository menuRepository;
     @Mock private DetailPesananRepository detailPesananRepository;
     @Mock private PesananRepository pesananRepository;
     @Mock private PromoMapper promoMapper;
@@ -169,15 +171,16 @@ class PromoServiceImplTest {
     }
 
     @Test
-    @DisplayName("deletePromo — sukses (soft delete)")
+    @DisplayName("deletePromo — sukses (hard delete setelah clear promo dari menu)")
     void deletePromo_sukses() {
         when(promoRepository.findById(promoId)).thenReturn(Optional.of(mockPromo));
-        when(promoRepository.save(any(Promo.class))).thenReturn(mockPromo);
+        doNothing().when(menuRepository).clearPromoFromMenus(promoId);
+        doNothing().when(promoRepository).delete(mockPromo);
 
         promoService.deletePromo(promoId);
 
-        assertThat(mockPromo.isActive()).isFalse();
-        verify(promoRepository).save(mockPromo);
+        verify(menuRepository).clearPromoFromMenus(promoId);
+        verify(promoRepository).delete(mockPromo);
     }
 
     @Test

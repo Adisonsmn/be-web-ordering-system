@@ -27,6 +27,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -114,7 +115,7 @@ class LaporanServiceImplTest {
         when(pesananRepository.findByTanggalPesananBetween(any(), any())).thenReturn(Collections.emptyList());
         when(pesananRepository.findByStatusIn(any())).thenReturn(Collections.emptyList());
         when(detailPesananRepository.getTotalDiskonPromoBetween(any(), any())).thenReturn(BigDecimal.ZERO);
-        when(detailPesananRepository.getMenuTerlarisAggregated(any(), any(), any(), any())).thenReturn(Collections.emptyList());
+        when(detailPesananRepository.getMenuTerlarisAggregated(any(), any(), any(), anyInt())).thenReturn(Collections.emptyList());
 
         byte[] bytes = laporanService.exportLaporan("bulanan", "xlsx");
 
