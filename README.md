@@ -544,7 +544,7 @@ QR_BASE_URL=https://aroma-senja.vercel.app/customer
 
 | Nama | GitHub | Role |
 |------|--------|------|
-| adisonsmn | *(isi username)* | Backend Lead |
+| adison simanullang | *(isi username)* | Backend Lead |
 | agungsrgh | [@agungsrgh](https://github.com/agungsrgh) | Backend Dev |
 | Farhan Hamzah | [@farhan-hamzah](https://github.com/farhan-hamzah) | Backend Dev |
 | Nazal Putra | [@NazalDev](https://github.com/NazalDev) | Backend Dev |
