@@ -4,7 +4,9 @@ import com.aromasenja.domain.pesanan.entity.Pesanan;
 import com.aromasenja.domain.pesanan.entity.StatusPesanan;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -14,7 +16,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
+public interface PesananRepository extends JpaRepository<Pesanan, UUID>, JpaSpecificationExecutor<Pesanan> {
 
     @Query("SELECT DISTINCT p FROM Pesanan p " +
            "LEFT JOIN FETCH p.detailPesanan dp " +
@@ -39,41 +41,8 @@ public interface PesananRepository extends JpaRepository<Pesanan, UUID> {
            "WHERE dp.menu.promo.promoId = :promoId")
     Page<Pesanan> findByPromoId(@Param("promoId") UUID promoId, Pageable pageable);
 
-    @Query(value =
-            "SELECT DISTINCT p.* FROM pesanan p " +
-            "LEFT JOIN meja m ON p.meja_id = m.meja_id " +
-            "LEFT JOIN client c ON p.client_id = c.client_id " +
-            "WHERE (:status IS NULL OR UPPER(p.status) = UPPER(CAST(:status AS VARCHAR))) " +
-            "  AND (:mejaId IS NULL OR p.meja_id = CAST(:mejaId AS UUID)) " +
-            "  AND (:tanggal IS NULL OR DATE(p.tanggal_pesanan) = CAST(:tanggal AS DATE)) " +
-            "  AND (:startDate IS NULL OR p.tanggal_pesanan >= CAST(:startDate AS TIMESTAMP)) " +
-            "  AND (:endDate IS NULL OR p.tanggal_pesanan <= CAST(:endDate AS TIMESTAMP)) " +
-            "  AND (:category IS NULL OR EXISTS (" +
-            "      SELECT 1 FROM detail_pesanan dp2 JOIN menus mn ON dp2.menu_id = mn.menu_id " +
-            "      WHERE dp2.pesanan_id = p.pesanan_id AND UPPER(mn.category) = UPPER(CAST(:category AS VARCHAR))" +
-            "  )) " +
-            "ORDER BY p.tanggal_pesanan DESC",
-            countQuery =
-            "SELECT COUNT(DISTINCT p.pesanan_id) FROM pesanan p " +
-            "LEFT JOIN meja m ON p.meja_id = m.meja_id " +
-            "WHERE (:status IS NULL OR UPPER(p.status) = UPPER(CAST(:status AS VARCHAR))) " +
-            "  AND (:mejaId IS NULL OR p.meja_id = CAST(:mejaId AS UUID)) " +
-            "  AND (:tanggal IS NULL OR DATE(p.tanggal_pesanan) = CAST(:tanggal AS DATE)) " +
-            "  AND (:startDate IS NULL OR p.tanggal_pesanan >= CAST(:startDate AS TIMESTAMP)) " +
-            "  AND (:endDate IS NULL OR p.tanggal_pesanan <= CAST(:endDate AS TIMESTAMP)) " +
-            "  AND (:category IS NULL OR EXISTS (" +
-            "      SELECT 1 FROM detail_pesanan dp2 JOIN menus mn ON dp2.menu_id = mn.menu_id " +
-            "      WHERE dp2.pesanan_id = p.pesanan_id AND UPPER(mn.category) = UPPER(CAST(:category AS VARCHAR))" +
-            "  ))",
-            nativeQuery = true)
-    Page<Pesanan> findAllAdminFiltered(
-            @Param("status") String status,
-            @Param("mejaId") UUID mejaId,
-            @Param("tanggal") LocalDate tanggal,
-            @Param("startDate") java.time.LocalDateTime startDate,
-            @Param("endDate") java.time.LocalDateTime endDate,
-            @Param("category") String category,
-            Pageable pageable);
+    // findAllAdminFiltered dihapus — digantikan oleh PesananSpecification + JpaSpecificationExecutor
+    // Gunakan pesananRepository.findAll(PesananSpecification.buildFilter(...), pageable)
 
     @Query("SELECT COALESCE(SUM(p.totalHarga), 0) FROM Pesanan p WHERE p.status = :status AND p.tanggalPesanan BETWEEN :start AND :end")
     BigDecimal sumTotalHargaByStatusAndTanggalPesananBetween(

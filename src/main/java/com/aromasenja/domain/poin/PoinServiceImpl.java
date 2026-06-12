@@ -66,7 +66,11 @@ public class PoinServiceImpl implements PoinService {
         Client client = clientRepository.findByUser_Id(currentUser.getUserId())
                 .orElseThrow(() -> new BusinessException("Profil client tidak ditemukan"));
 
-        return new PoinBalanceResponse(client.getTotalPoint(), rupiahPerPoin);
+        String namaClient = client.getUser() != null ? client.getUser().getName() : "Member";
+        java.time.LocalDateTime memberSejak = client.getUser() != null ? client.getUser().getCreatedAt() : null;
+        int totalPoinDiperoleh = poinTransaksiRepository.getTotalPoinEarnByClient(client.getClientId());
+
+        return new PoinBalanceResponse(client.getTotalPoint(), rupiahPerPoin, namaClient, memberSejak, totalPoinDiperoleh);
     }
 
     @Override

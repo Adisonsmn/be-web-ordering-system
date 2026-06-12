@@ -17,6 +17,7 @@ import com.aromasenja.domain.pesanan.entity.DetailPesanan;
 import com.aromasenja.domain.pesanan.entity.MetodePembayaran;
 import com.aromasenja.domain.pesanan.entity.Pesanan;
 import com.aromasenja.domain.pesanan.entity.StatusPesanan;
+import com.aromasenja.domain.promo.PromoRepository;
 import com.aromasenja.domain.promo.entity.Promo;
 import com.aromasenja.domain.promo.entity.TipeDiskon;
 import com.aromasenja.domain.user.ClientRepository;
@@ -42,7 +43,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -58,6 +61,7 @@ public class PesananServiceImpl implements PesananService {
     private final MejaRepository mejaRepository;
     private final PoinTransaksiRepository poinTransaksiRepository;
     private final RestoConfigRepository restoConfigRepository;
+    private final PromoRepository promoRepository;
     private final NotificationService notificationService;
     private final PesananMapper pesananMapper;
     private final MejaSessionRepository mejaSessionRepository;
@@ -146,6 +150,15 @@ public class PesananServiceImpl implements PesananService {
         }
         pesanan.setDetailPesanan(details);
 
+        // Kumpulkan promo yang terpakai dalam pesanan ini (distinct per promoId)
+        Set<UUID> promoUsedIds = new HashSet<>();
+        for (DetailKeranjang dk : keranjang.getDetailKeranjang()) {
+            Promo usedPromo = dk.getMenu().getPromo();
+            if (isPromoActive(usedPromo)) {
+                promoUsedIds.add(usedPromo.getPromoId());
+            }
+        }
+
         // 6. Logika Poin
         int poinDigunakan = 0;
         BigDecimal potonganPoin = BigDecimal.ZERO;
@@ -189,6 +202,26 @@ public class PesananServiceImpl implements PesananService {
             poinTransaksiRepository.save(redemption);
         }
 
+        // Increment usageCount untuk setiap promo unik yang dipakai dalam pesanan ini
+        if (!promoUsedIds.isEmpty()) {
+            for (UUID usedPromoId : promoUsedIds) {
+                promoRepository.findById(usedPromoId).ifPresent(promo -> {
+                    int newCount = promo.getUsageCount() + 1;
+                    promo.setUsageCount(newCount);
+
+                    // Auto-deactivate jika sudah mencapai batas penggunaan
+                    if (promo.getMaxUsage() != null && newCount >= promo.getMaxUsage()) {
+                        promo.setActive(false);
+                        log.info("Promo {} otomatis dinonaktifkan karena mencapai batas penggunaan ({}/{})",
+                                promo.getNamaPromo(), newCount, promo.getMaxUsage());
+                    }
+
+                    promoRepository.save(promo);
+                    log.info("Promo {} usageCount diperbarui: {}", promo.getNamaPromo(), newCount);
+                });
+            }
+        }
+
         // 8. Kosongkan Keranjang
         keranjang.getDetailKeranjang().clear();
         keranjangRepository.save(keranjang);
@@ -208,7 +241,8 @@ public class PesananServiceImpl implements PesananService {
             notificationService.publishMejaStatus(new MejaStatusWsPayload(
                     meja.getMejaId(),
                     meja.getNomorMeja(),
-                    true
+                    true,
+                    "OCCUPIED"
             ));
         } catch (Exception e) {
             log.error("Gagal mengirimkan notifikasi WebSocket untuk pesanan baru: {}", savedPesanan.getPesananId(), e);
@@ -287,11 +321,13 @@ public class PesananServiceImpl implements PesananService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, UUID mejaId, LocalDate tanggal, LocalDateTime startDate, LocalDateTime endDate, String category, Pageable pageable) {
-        String statusStr = status != null ? status.name() : null;
-        Page<Pesanan> page = pesananRepository.findAllAdminFiltered(statusStr, mejaId, tanggal, startDate, endDate, category, pageable);
+    public Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, List<StatusPesanan> statuses, UUID mejaId, LocalDate tanggal, LocalDateTime startDate, LocalDateTime endDate, String category, Pageable pageable) {
+        var spec = PesananSpecification.buildFilter(status, statuses, mejaId, tanggal, startDate, endDate, category);
+        Page<Pesanan> page = pesananRepository.findAll(spec, pageable);
         return page.map(pesananMapper::toResponse);
     }
+
+
 
     @Override
     @Transactional(readOnly = true)
@@ -330,6 +366,33 @@ public class PesananServiceImpl implements PesananService {
 
         Pesanan updated = pesananRepository.save(pesanan);
 
+        // Kredit poin ke client saat pesanan selesai (SERVED) — via kanban drag
+        if (request.status() == StatusPesanan.SERVED) {
+            Client earnClient = updated.getClient();
+            if (earnClient != null) {
+                // Cegah double-earn jika bayarPesanan sudah pernah dipanggil sebelumnya
+                boolean sudahEarn = poinTransaksiRepository
+                        .existsByPesananPesananIdAndTipe(updated.getPesananId(), TipePoin.EARN);
+                if (!sudahEarn) {
+                    int earnedPoints = updated.getTotalHarga()
+                            .divide(rupiahPerEarnedPoin, 0, RoundingMode.DOWN).intValue();
+                    if (earnedPoints > 0) {
+                        earnClient.setTotalPoint(earnClient.getTotalPoint() + earnedPoints);
+                        clientRepository.save(earnClient);
+
+                        PoinTransaksi earning = new PoinTransaksi();
+                        earning.setClient(earnClient);
+                        earning.setPesanan(updated);
+                        earning.setJumlahPoin(earnedPoints);
+                        earning.setTipe(TipePoin.EARN);
+                        poinTransaksiRepository.save(earning);
+                        log.info("Poin EARN {} dicredit ke client {} untuk pesanan {}",
+                                earnedPoints, earnClient.getClientId(), updated.getPesananId());
+                    }
+                }
+            }
+        }
+
         // WS Broadcast ke client
         try {
             notificationService.publishStatusPesanan(pesananId, new PesananStatusWsPayload(
@@ -338,6 +401,16 @@ public class PesananServiceImpl implements PesananService {
                     updated.getStatus() == StatusPesanan.PREPARING ? updated.getEstimasiMenit() : null,
                     LocalDateTime.now()
             ));
+
+            // Broadcast ke admin dashboard untuk aktivitas terkini
+            notificationService.publishDashboardStats(new java.util.HashMap<>() {{
+                put("event", "PESANAN_STATUS_UPDATED");
+                put("pesananId", updated.getPesananId());
+                put("status", updated.getStatus().name());
+                put("nomorMeja", updated.getMeja() != null ? updated.getMeja().getNomorMeja() : null);
+                put("kodePesanan", updated.getKodePesanan());
+                put("estimasiMenit", updated.getStatus() == StatusPesanan.PREPARING ? updated.getEstimasiMenit() : null);
+            }});
         } catch (Exception e) {
             log.error("Gagal publish WS update status pesanan: {}", pesananId, e);
         }
@@ -396,6 +469,15 @@ public class PesananServiceImpl implements PesananService {
                     null,
                     LocalDateTime.now()
             ));
+
+            // Broadcast ke admin dashboard untuk aktivitas terkini
+            notificationService.publishDashboardStats(new java.util.HashMap<>() {{
+                put("event", "PESANAN_SERVED");
+                put("pesananId", saved.getPesananId());
+                put("kodePesanan", saved.getKodePesanan());
+                put("nomorMeja", saved.getMeja() != null ? saved.getMeja().getNomorMeja() : null);
+                put("totalHarga", saved.getTotalHarga());
+            }});
         } catch (Exception e) {
             log.error("Gagal publish WS update status pembayaran pesanan: {}", pesananId, e);
         }
@@ -439,6 +521,14 @@ public class PesananServiceImpl implements PesananService {
                     null,
                     LocalDateTime.now()
             ));
+
+            // Broadcast ke admin dashboard untuk aktivitas terkini
+            notificationService.publishDashboardStats(new java.util.HashMap<>() {{
+                put("event", "PESANAN_CANCELLED");
+                put("pesananId", pesanan.getPesananId());
+                put("kodePesanan", pesanan.getKodePesanan());
+                put("nomorMeja", pesanan.getMeja() != null ? pesanan.getMeja().getNomorMeja() : null);
+            }});
         } catch (Exception e) {
             log.error("Gagal publish WS cancel pesanan status: {}", pesananId, e);
         }

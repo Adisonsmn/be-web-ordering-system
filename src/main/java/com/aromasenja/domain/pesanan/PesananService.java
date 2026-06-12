@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public interface PesananService {
@@ -21,7 +22,7 @@ public interface PesananService {
 
     KanbanPesananResponse getKanbanPesananAdmin();
 
-    Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, UUID mejaId, LocalDate tanggal, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate, String category, Pageable pageable);
+    Page<PesananResponse> getAllPesananAdmin(StatusPesanan status, List<StatusPesanan> statuses, UUID mejaId, LocalDate tanggal, java.time.LocalDateTime startDate, java.time.LocalDateTime endDate, String category, Pageable pageable);
 
     PesananResponse updateStatus(UUID pesananId, UpdateStatusPesananRequest request);
 

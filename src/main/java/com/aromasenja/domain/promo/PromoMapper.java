@@ -11,8 +11,12 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface PromoMapper {
 
+    // MapStruct strip prefix 'is' dari boolean getter: isActive() → property 'active'
+    // Tanpa @Mapping eksplisit ini, field isActive selalu false di response
+    @Mapping(source = "active", target = "isActive")
     PromoResponse toResponse(Promo promo);
 
+    @Mapping(source = "active", target = "isActive")
     List<PromoResponse> toResponseList(List<Promo> promos);
 
     @Mapping(target = "promoId", ignore = true)

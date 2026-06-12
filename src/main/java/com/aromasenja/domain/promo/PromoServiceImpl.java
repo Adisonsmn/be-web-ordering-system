@@ -2,6 +2,7 @@ package com.aromasenja.domain.promo;
 
 import com.aromasenja.common.exception.BusinessException;
 import com.aromasenja.common.exception.ResourceNotFoundException;
+import com.aromasenja.domain.menu.MenuRepository;
 import com.aromasenja.domain.pesanan.DetailPesananRepository;
 import com.aromasenja.domain.pesanan.PesananRepository;
 import com.aromasenja.domain.pesanan.entity.Pesanan;
@@ -10,6 +11,7 @@ import com.aromasenja.domain.promo.dto.PromoResponse;
 import com.aromasenja.domain.promo.dto.PromoHistoryResponse;
 import com.aromasenja.domain.promo.entity.Promo;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,9 +25,11 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class PromoServiceImpl implements PromoService {
 
     private final PromoRepository promoRepository;
+    private final MenuRepository menuRepository;
     private final DetailPesananRepository detailPesananRepository;
     private final PesananRepository pesananRepository;
     private final PromoMapper promoMapper;
@@ -100,9 +104,13 @@ public class PromoServiceImpl implements PromoService {
         Promo promo = promoRepository.findById(promoId)
                 .orElseThrow(() -> new ResourceNotFoundException("Promo tidak ditemukan"));
 
-        // Soft delete
-        promo.setActive(false);
-        promoRepository.save(promo);
+        // 1. Lepaskan promo dari semua menu yang masih menggunakannya (clear FK)
+        menuRepository.clearPromoFromMenus(promoId);
+        log.info("Promo {} dilepaskan dari semua menu sebelum dihapus", promoId);
+
+        // 2. Hard delete — hapus record promo secara permanen
+        promoRepository.delete(promo);
+        log.info("Promo {} berhasil dihapus permanen", promoId);
     }
 
     @Override

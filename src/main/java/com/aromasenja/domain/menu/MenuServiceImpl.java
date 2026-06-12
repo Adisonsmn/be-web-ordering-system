@@ -181,6 +181,24 @@ public class MenuServiceImpl implements MenuService {
 
     @Override
     @Transactional
+    public MenuDetailResponse patchMenuPromo(UUID menuId, UpdateMenuPromoRequest request) {
+        Menu menu = menuRepository.findByMenuIdAndIsActiveTrue(menuId)
+            .orElseThrow(() -> new ResourceNotFoundException("Menu tidak ditemukan"));
+
+        if (request.promoId() != null) {
+            Promo promo = promoRepository.findById(request.promoId())
+                .orElseThrow(() -> new ResourceNotFoundException("Promo tidak ditemukan"));
+            menu.setPromo(promo);
+        } else {
+            menu.setPromo(null);
+        }
+
+        menuRepository.save(menu);
+        return getMenuDetail(menuId);
+    }
+
+    @Override
+    @Transactional
     public void softDeleteMenu(UUID menuId) {
         Menu menu = menuRepository.findByMenuIdAndIsActiveTrue(menuId)
             .orElseThrow(() -> new ResourceNotFoundException("Menu tidak ditemukan"));
@@ -197,5 +215,15 @@ public class MenuServiceImpl implements MenuService {
         return adminRepository.findByUser_Id(userId)
             .map(Admin::getAdminId)
             .orElseThrow(() -> new BusinessException("Profil admin tidak ditemukan"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MenuResponse getMenuPopuler() {
+        // Step 1: ambil menu_id dengan total order terbanyak (scalar UUID string)
+        return menuRepository.findMostPopularMenuId()
+                .flatMap(idStr -> menuRepository.findByMenuIdAndIsActiveTrue(UUID.fromString(idStr)))
+                .map(menuMapper::toResponse)
+                .orElse(null); // null jika belum ada menu atau pesanan sama sekali
     }
 }

@@ -12,5 +12,9 @@ public interface MenuService {
     MenuDetailResponse createMenu(CreateMenuRequest request, UserPrincipal currentUser);
     MenuDetailResponse updateMenu(UUID menuId, UpdateMenuRequest request, UserPrincipal currentUser);
     MenuDetailResponse toggleAvailability(UUID menuId, UpdateMenuAvailabilityRequest request);
+    MenuDetailResponse patchMenuPromo(UUID menuId, UpdateMenuPromoRequest request);
     void softDeleteMenu(UUID menuId);
+
+    /** Ambil menu paling populer (all-time) untuk ditampilkan di WelcomePage customer. */
+    MenuResponse getMenuPopuler();
 }

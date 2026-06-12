@@ -34,6 +34,16 @@ public class MenuController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil katalog menu", menus));
     }
 
+    @GetMapping("/populer")
+    @Operation(summary = "Ambil menu paling populer (Public) — ditampilkan di halaman selamat datang")
+    public ResponseEntity<ApiResponse<MenuResponse>> getMenuPopuler() {
+        MenuResponse menu = menuService.getMenuPopuler();
+        if (menu == null) {
+            return ResponseEntity.ok(ApiResponse.success("Belum ada data menu populer", null));
+        }
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil menu populer", menu));
+    }
+
     @GetMapping("/{menuId}")
     @Operation(summary = "Ambil detail lengkap satu item menu (Public)")
     public ResponseEntity<ApiResponse<MenuDetailResponse>> getDetail(@PathVariable UUID menuId) {
@@ -81,6 +91,17 @@ public class MenuController {
             @Valid @RequestBody UpdateMenuAvailabilityRequest request) {
         MenuDetailResponse response = menuService.toggleAvailability(menuId, request);
         return ResponseEntity.ok(ApiResponse.success("Status ketersediaan menu berhasil diperbarui", response));
+    }
+
+    @PatchMapping("/{menuId}/promo")
+    @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(summary = "Set atau hapus promo pada menu (Admin)")
+    public ResponseEntity<ApiResponse<MenuDetailResponse>> patchPromo(
+            @PathVariable UUID menuId,
+            @RequestBody UpdateMenuPromoRequest request) {
+        MenuDetailResponse response = menuService.patchMenuPromo(menuId, request);
+        return ResponseEntity.ok(ApiResponse.success("Promo menu berhasil diperbarui", response));
     }
 
     @DeleteMapping("/{menuId}")

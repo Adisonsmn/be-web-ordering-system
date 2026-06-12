@@ -13,6 +13,8 @@ public interface MejaMapper {
 
     @Mapping(target = "zone", expression = "java(meja.getZone() != null ? meja.getZone().name() : null)")
     @Mapping(target = "mejaStatus", expression = "java(meja.isOccupied() ? \"OCCUPIED\" : \"AVAILABLE\")")
+    @Mapping(target = "isOccupied", source = "occupied")
+    @Mapping(target = "isActive", source = "active")
     MejaResponse toResponse(Meja meja);
 
     @IterableMapping(elementTargetType = MejaResponse.class)

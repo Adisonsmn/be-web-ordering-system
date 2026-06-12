@@ -38,4 +38,24 @@ public interface MenuRepository extends JpaRepository<Menu, UUID> {
 
     @Query(value = "SELECT COALESCE(AVG(bintang), 0.0) FROM rating WHERE menu_id = :menuId AND is_public = true", nativeQuery = true)
     double getAverageRatingForMenu(@Param("menuId") UUID menuId);
+
+    /** Set promo_id = null pada semua menu yang menggunakan promo ini, sebelum promo dihapus permanen. */
+    @Modifying
+    @Query("UPDATE Menu m SET m.promo = null WHERE m.promo.promoId = :promoId")
+    void clearPromoFromMenus(@Param("promoId") UUID promoId);
+
+    /**
+     * Ambil ID menu paling populer berdasarkan total jumlah item yang dipesan (all-time).
+     * Return tipe String (UUID as text) untuk menghindari masalah mapping Hibernate
+     * pada native query dengan relasi @ManyToOne.
+     * Catatan: nama tabel adalah "menus" (bukan "menu") sesuai @Table(name = "menus").
+     */
+    @Query(value = "SELECT m.menu_id::text FROM menus m " +
+                   "LEFT JOIN detail_pesanan dp ON m.menu_id = dp.menu_id " +
+                   "WHERE m.is_active = true " +
+                   "GROUP BY m.menu_id " +
+                   "ORDER BY COALESCE(SUM(dp.quantity), 0) DESC " +
+                   "LIMIT 1",
+           nativeQuery = true)
+    Optional<String> findMostPopularMenuId();
 }

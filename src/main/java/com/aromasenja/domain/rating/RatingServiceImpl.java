@@ -36,6 +36,7 @@ public class RatingServiceImpl implements RatingService {
     private final ClientRepository clientRepository;
     private final MenuRepository menuRepository;
     private final RatingMapper ratingMapper;
+    private final com.aromasenja.notification.NotificationService notificationService;
 
     @Override
     public RatingResponse submitRating(CreateRatingRequest request, UserPrincipal currentUser) {
@@ -104,7 +105,23 @@ public class RatingServiceImpl implements RatingService {
             }
         }
 
-        return ratingMapper.toResponse(savedOverall);
+        RatingResponse result = ratingMapper.toResponse(savedOverall);
+
+        // Broadcast ke admin dashboard untuk aktivitas terkini
+        try {
+            Pesanan finalPesanan = pesanan;
+            notificationService.publishDashboardStats(new java.util.HashMap<>() {{
+                put("event", "RATING_SUBMITTED");
+                put("pesananId", finalPesanan.getPesananId());
+                put("kodePesanan", finalPesanan.getKodePesanan());
+                put("nomorMeja", finalPesanan.getMeja() != null ? finalPesanan.getMeja().getNomorMeja() : null);
+                put("bintang", request.ratingOverall());
+            }});
+        } catch (Exception e) {
+            log.error("Gagal publish WS event rating submitted: pesananId={}", pesanan.getPesananId(), e);
+        }
+
+        return result;
     }
 
     @Override

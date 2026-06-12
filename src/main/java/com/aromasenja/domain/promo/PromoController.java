@@ -70,10 +70,10 @@ public class PromoController {
     @DeleteMapping("/{promoId}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
-    @Operation(summary = "Nonaktifkan / Hapus promo - Soft Delete (Admin)")
+    @Operation(summary = "Hapus promo secara permanen (Admin)")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable UUID promoId) {
         promoService.deletePromo(promoId);
-        return ResponseEntity.ok(ApiResponse.success("Promo berhasil dinonaktifkan (soft delete)", null));
+        return ResponseEntity.ok(ApiResponse.success("Promo berhasil dihapus", null));
     }
 
     @GetMapping("/{promoId}/history")

@@ -47,7 +47,7 @@ class PoinControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockBalanceResponse = new PoinBalanceResponse(120, 100);
+        mockBalanceResponse = new PoinBalanceResponse(120, 100, "Test Member", java.time.LocalDateTime.now(), 300);
         mockKalkulasiResponse = new PoinKalkulasiResponse(BigDecimal.valueOf(1000), BigDecimal.valueOf(9000));
         validRequest = new PoinKalkulasiRequest(BigDecimal.valueOf(10000), 10);
     }

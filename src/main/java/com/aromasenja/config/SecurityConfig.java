@@ -53,7 +53,7 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // ── Menu catalog & ratings (GET public) ──────────────────────
-                .requestMatchers(HttpMethod.GET, "/api/menu", "/api/menu/{id}", "/api/menu/{id}/pairings", "/api/rating/menu/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/menu", "/api/menu/populer", "/api/menu/{id}", "/api/menu/{id}/pairings", "/api/rating/menu/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/rating").permitAll()
 
                 // ── Scan QR meja (public) ────────────────────────────────────

@@ -327,9 +327,9 @@ public class LaporanServiceImpl implements LaporanService {
 
     @Override
     public PoinPromoStatsResponse getPoinPromoStats() {
-        // 1. Total point redeemed & nilai rupiahnya
-        long totalPoinRedeemed = poinTransaksiRepository.getTotalPointsRedeemed();
-        BigDecimal totalNilaiRedeemRupiah = BigDecimal.valueOf(totalPoinRedeemed).multiply(BigDecimal.valueOf(rupiahPerPoin));
+        // 1. Total poin diterbitkan (EARN) & digunakan (REDEEM)
+        long totalPoinDiterbitkan = poinTransaksiRepository.getTotalPointsEarned();
+        long totalPoinDigunakan = poinTransaksiRepository.getTotalPointsRedeemed();
 
         // 2. Diskon promo & total pesanan pakai promo
         BigDecimal totalDiskonPromo = detailPesananRepository.getTotalDiskonPromo();
@@ -347,13 +347,14 @@ public class LaporanServiceImpl implements LaporanService {
         }
 
         return new PoinPromoStatsResponse(
-                totalPoinRedeemed,
-                totalNilaiRedeemRupiah,
+                totalPoinDiterbitkan,
+                totalPoinDigunakan,
                 totalDiskonPromo,
                 totalPesananPakaiPromo,
                 topPromo
         );
     }
+
 
     @Override
     public byte[] exportLaporan(String period, String format) {

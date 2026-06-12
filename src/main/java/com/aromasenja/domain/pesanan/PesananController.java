@@ -1,6 +1,7 @@
 package com.aromasenja.domain.pesanan;
 
 import com.aromasenja.common.response.ApiResponse;
+import com.aromasenja.common.response.PageResponse;
 import com.aromasenja.common.security.UserPrincipal;
 import com.aromasenja.domain.pesanan.dto.*;
 import com.aromasenja.domain.pesanan.entity.StatusPesanan;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -71,19 +74,20 @@ public class PesananController {
     @PreAuthorize("hasRole('CLIENT')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Ambil riwayat pesanan milik client login (Member)")
-    public ResponseEntity<ApiResponse<Page<PesananResponse>>> getRiwayat(
+    public ResponseEntity<ApiResponse<PageResponse<PesananResponse>>> getRiwayat(
             @AuthenticationPrincipal UserPrincipal currentUser,
             @PageableDefault(size = 10) Pageable pageable) {
-        Page<PesananResponse> response = pesananService.getRiwayatPesanan(currentUser, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil riwayat pesanan", response));
+        Page<PesananResponse> page = pesananService.getRiwayatPesanan(currentUser, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil riwayat pesanan", PageResponse.from(page)));
     }
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Ambil daftar semua pesanan dengan filter (Admin)")
-    public ResponseEntity<ApiResponse<Page<PesananResponse>>> getAllAdmin(
+    public ResponseEntity<ApiResponse<PageResponse<PesananResponse>>> getAllAdmin(
             @RequestParam(required = false) StatusPesanan status,
+            @RequestParam(required = false) List<StatusPesanan> statuses,
             @RequestParam(required = false) UUID mejaId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate tanggal,
             @RequestParam(required = false) String startDate,
@@ -92,18 +96,24 @@ public class PesananController {
             @PageableDefault(size = 10) Pageable pageable) {
         java.time.LocalDateTime startLdt = null;
         java.time.LocalDateTime endLdt = null;
+        // Zona waktu Jakarta (WIB, UTC+7) — sesuai dengan cara DB menyimpan LocalDateTime
+        ZoneId zonaJakarta = ZoneId.of("Asia/Jakarta");
         try {
             if (startDate != null && !startDate.isBlank()) {
-                startLdt = OffsetDateTime.parse(startDate).toLocalDateTime();
+                startLdt = OffsetDateTime.parse(startDate)
+                        .atZoneSameInstant(zonaJakarta)
+                        .toLocalDateTime();
             }
             if (endDate != null && !endDate.isBlank()) {
-                endLdt = OffsetDateTime.parse(endDate).toLocalDateTime();
+                endLdt = OffsetDateTime.parse(endDate)
+                        .atZoneSameInstant(zonaJakarta)
+                        .toLocalDateTime();
             }
         } catch (Exception e) {
             log.warn("Gagal parse startDate/endDate: startDate={}, endDate={}", startDate, endDate, e);
         }
-        Page<PesananResponse> response = pesananService.getAllPesananAdmin(status, mejaId, tanggal, startLdt, endLdt, category, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil daftar pesanan", response));
+        Page<PesananResponse> page = pesananService.getAllPesananAdmin(status, statuses, mejaId, tanggal, startLdt, endLdt, category, pageable);
+        return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil daftar pesanan", PageResponse.from(page)));
     }
 
     @GetMapping("/kanban")

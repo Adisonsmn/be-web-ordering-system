@@ -4,10 +4,10 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record PoinPromoStatsResponse(
-    long totalPoinRedeemed,
-    BigDecimal totalNilaiRedeemRupiah,
-    BigDecimal totalDiskonPromo,
-    long totalPesananPakaiPromo,
+    long totalPoinDiterbitkan,      // total poin EARN (diterbitkan ke pelanggan)
+    long totalPoinDigunakan,        // total poin REDEEM (digunakan pelanggan)
+    BigDecimal totalDiskonPromo,    // total rupiah diskon dari promo
+    long totalPesananPakaiPromo,    // jumlah pesanan yang pakai promo
     TopPromoResponse topPromo
 ) {
     public record TopPromoResponse(
@@ -16,3 +16,4 @@ public record PoinPromoStatsResponse(
         long totalPenggunaan
     ) {}
 }
+
