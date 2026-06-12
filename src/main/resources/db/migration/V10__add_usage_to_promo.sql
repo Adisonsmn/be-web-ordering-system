@@ -1,0 +1,3 @@
+ALTER TABLE promo
+ADD COLUMN usage_count INT NOT NULL DEFAULT 0,
+ADD COLUMN max_usage INT;
