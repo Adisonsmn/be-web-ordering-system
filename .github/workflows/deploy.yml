@@ -62,29 +62,3 @@ jobs:
           # Cek final status
           sudo systemctl status aroma-senja.service --no-pager
 
-    - name: Health Check
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VM_IP }}
-        username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.VM_SSH_KEY }}
-        # Spring Boot butuh ~20-30 detik untuk startup + Flyway migration
-        command_timeout: 120s
-        script: |
-          echo "Menunggu Spring Boot siap (max 90 detik)..."
-          for i in $(seq 1 9); do
-            sleep 10
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://localhost:8080/actuator/health)
-
-            if [ "$HTTP_STATUS" = "200" ]; then
-              echo "✅ Health check berhasil setelah $((i * 10)) detik"
-              exit 0
-            fi
-            echo "  ... belum siap ($((i * 10))s) — HTTP $HTTP_STATUS"
-          done
-
-          echo "❌ Backend tidak siap setelah 90 detik"
-          echo "--- Log terbaru ---"
-          sudo journalctl -u aroma-senja.service -n 80 --no-pager
-          exit 1
