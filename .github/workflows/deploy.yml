@@ -20,7 +20,7 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Build with Maven
+    - name: Build with Maven (skip tests)
       run: mvn clean package -DskipTests
 
     - name: Copy JAR to Azure VM via SCP
@@ -33,13 +33,51 @@ jobs:
         target: "/home/${{ secrets.VM_USER }}/"
         strip_components: 1
 
-    - name: Rename JAR and Restart Service via SSH
+    - name: Restart Service via SSH
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.VM_IP }}
         username: ${{ secrets.VM_USER }}
         key: ${{ secrets.VM_SSH_KEY }}
         script: |
-          mv /home/${{ secrets.VM_USER }}/aroma-senja-backend-0.0.1-SNAPSHOT.jar /home/${{ secrets.VM_USER }}/aroma-senja.jar
+          # Rename JAR ke nama tetap
+          mv /home/${{ secrets.VM_USER }}/aroma-senja-backend-0.0.1-SNAPSHOT.jar \
+             /home/${{ secrets.VM_USER }}/aroma-senja.jar
+
+          # Restart service
           sudo systemctl restart aroma-senja.service
-          sudo systemctl status aroma-senja.service
+
+          # Tunggu service siap (max 60 detik)
+          echo "Menunggu service siap..."
+          for i in $(seq 1 12); do
+            sleep 5
+            STATUS=$(sudo systemctl is-active aroma-senja.service)
+            if [ "$STATUS" = "active" ]; then
+              echo "✅ Service aktif setelah $((i * 5)) detik"
+              break
+            fi
+            echo "  ... masih starting ($((i * 5))s)"
+          done
+
+          # Cek final status
+          sudo systemctl status aroma-senja.service --no-pager
+
+    - name: Health Check
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VM_IP }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.VM_SSH_KEY }}
+        script: |
+          # Health check via actuator
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://localhost:8080/actuator/health)
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✅ Health check berhasil — backend berjalan normal"
+          else
+            echo "❌ Health check gagal — HTTP status: $HTTP_STATUS"
+            echo "--- Log terbaru ---"
+            sudo journalctl -u aroma-senja.service -n 50 --no-pager
+            exit 1
+          fi
