@@ -189,6 +189,7 @@ public class PesananServiceImpl implements PesananService {
         // 7. Simpan Pesanan & Update Status Meja
         Pesanan savedPesanan = pesananRepository.save(pesanan);
 
+        boolean wasOccupied = meja.isOccupied();
         meja.setOccupied(true);
         mejaRepository.save(meja);
 
@@ -238,12 +239,14 @@ public class PesananServiceImpl implements PesananService {
                     savedPesanan.getTanggalPesanan()
             ));
 
-            notificationService.publishMejaStatus(new MejaStatusWsPayload(
-                    meja.getMejaId(),
-                    meja.getNomorMeja(),
-                    true,
-                    "OCCUPIED"
-            ));
+            if (!wasOccupied) {
+                notificationService.publishMejaStatus(new MejaStatusWsPayload(
+                        meja.getMejaId(),
+                        meja.getNomorMeja(),
+                        true,
+                        "OCCUPIED"
+                ));
+            }
         } catch (Exception e) {
             log.error("Gagal mengirimkan notifikasi WebSocket untuk pesanan baru: {}", savedPesanan.getPesananId(), e);
         }
