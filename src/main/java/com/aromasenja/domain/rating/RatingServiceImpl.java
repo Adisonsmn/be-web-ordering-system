@@ -110,12 +110,20 @@ public class RatingServiceImpl implements RatingService {
         // Broadcast ke admin dashboard untuk aktivitas terkini
         try {
             Pesanan finalPesanan = pesanan;
+            Client finalClient = client;
+            boolean isGuest = (finalClient == null);
+            String namaClient = (finalClient != null && finalClient.getUser() != null)
+                    ? finalClient.getUser().getName()
+                    : null;
+
             notificationService.publishDashboardStats(new java.util.HashMap<>() {{
                 put("event", "RATING_SUBMITTED");
                 put("pesananId", finalPesanan.getPesananId());
                 put("kodePesanan", finalPesanan.getKodePesanan());
                 put("nomorMeja", finalPesanan.getMeja() != null ? finalPesanan.getMeja().getNomorMeja() : null);
                 put("bintang", request.ratingOverall());
+                put("namaClient", namaClient);
+                put("isGuest", isGuest);
             }});
         } catch (Exception e) {
             log.error("Gagal publish WS event rating submitted: pesananId={}", pesanan.getPesananId(), e);
