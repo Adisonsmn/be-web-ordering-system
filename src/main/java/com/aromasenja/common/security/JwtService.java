@@ -47,10 +47,13 @@ public class JwtService {
     // ── Token generation ─────────────────────────────────────────────────────
 
     /** Generate access token untuk user yang sudah login (non-guest). */
-    public String generateAccessToken(UserPrincipal principal) {
+    public String generateAccessToken(UserPrincipal principal, UUID tokenId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("role", principal.getRole().toDbValue());
         claims.put("isGuest", false);
+        if (tokenId != null) {
+            claims.put("tokenId", tokenId.toString());
+        }
         return buildToken(claims, principal.getUserId().toString(), accessTokenExpiry);
     }
 
@@ -104,6 +107,11 @@ public class JwtService {
     public UUID extractTableId(String token) {
         String tableIdStr = extractAllClaims(token).get("tableId", String.class);
         return tableIdStr != null ? UUID.fromString(tableIdStr) : null;
+    }
+
+    public UUID extractTokenId(String token) {
+        String tokenIdStr = extractAllClaims(token).get("tokenId", String.class);
+        return tokenIdStr != null ? UUID.fromString(tokenIdStr) : null;
     }
 
     // ── Token validation ─────────────────────────────────────────────────────

@@ -32,4 +32,9 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     @Modifying
     @Query("UPDATE RefreshToken rt SET rt.isRevoked = true WHERE rt.token = :token")
     void revokeByToken(@Param("token") String token);
+
+    /**
+     * Cek apakah token ID tertentu ada dan belum di-revoke (masih aktif).
+     */
+    boolean existsByTokenIdAndIsRevokedFalse(java.util.UUID tokenId);
 }

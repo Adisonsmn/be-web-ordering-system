@@ -68,11 +68,11 @@ public class AuthServiceImpl implements AuthService {
         UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
         log.info("Login berhasil untuk user: {}", principal.getUserId());
 
-        String accessToken  = jwtService.generateAccessToken(principal);
-        String refreshToken = saveRefreshToken(principal);
+        RefreshToken refreshTokenEntity = saveRefreshToken(principal);
+        String accessToken  = jwtService.generateAccessToken(principal, refreshTokenEntity.getTokenId());
         UserProfileResponse userProfile = buildUserProfile(principal.getUserId());
 
-        return new LoginResponse(accessToken, refreshToken, "Bearer",
+        return new LoginResponse(accessToken, refreshTokenEntity.getToken(), "Bearer",
                 refreshTokenExpiryMs / 1000, userProfile);
     }
 
@@ -103,12 +103,12 @@ public class AuthServiceImpl implements AuthService {
         clientRepository.save(client);
 
         UserPrincipal principal = UserPrincipal.from(user);
-        String accessToken  = jwtService.generateAccessToken(principal);
-        String refreshToken = saveRefreshToken(principal);
+        RefreshToken refreshTokenEntity = saveRefreshToken(principal);
+        String accessToken  = jwtService.generateAccessToken(principal, refreshTokenEntity.getTokenId());
 
         log.info("Registrasi berhasil untuk user: {}", user.getId());
         UserProfileResponse userProfile = buildUserProfileFromEntity(user, client);
-        return new LoginResponse(accessToken, refreshToken, "Bearer",
+        return new LoginResponse(accessToken, refreshTokenEntity.getToken(), "Bearer",
                 refreshTokenExpiryMs / 1000, userProfile);
     }
 
@@ -130,7 +130,7 @@ public class AuthServiceImpl implements AuthService {
 
         User user = storedToken.getUser();
         UserPrincipal principal = UserPrincipal.from(user);
-        String newAccessToken = jwtService.generateAccessToken(principal);
+        String newAccessToken = jwtService.generateAccessToken(principal, storedToken.getTokenId());
 
         log.info("Access token di-refresh untuk user: {}", user.getId());
         UserProfileResponse userProfile = buildUserProfile(user.getId());
@@ -199,7 +199,7 @@ public class AuthServiceImpl implements AuthService {
      * Simpan refresh token baru ke DB.
      * Semua token lama user di-revoke terlebih dahulu (single session strategy).
      */
-    private String saveRefreshToken(UserPrincipal principal) {
+    private RefreshToken saveRefreshToken(UserPrincipal principal) {
         // Revoke semua token aktif user ini
         refreshTokenRepository.revokeAllByUserId(principal.getUserId());
 
@@ -212,9 +212,7 @@ public class AuthServiceImpl implements AuthService {
         refreshToken.setUser(user);
         refreshToken.setToken(rawRefreshToken);
         refreshToken.setExpiresAt(LocalDateTime.now().plusSeconds(refreshTokenExpiryMs / 1000));
-        refreshTokenRepository.save(refreshToken);
-
-        return rawRefreshToken;
+        return refreshTokenRepository.save(refreshToken);
     }
 
     private UserProfileResponse buildUserProfile(UUID userId) {

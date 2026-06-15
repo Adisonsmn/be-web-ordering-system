@@ -1,6 +1,7 @@
 package com.aromasenja.common.security;
 
 import com.aromasenja.common.Role;
+import com.aromasenja.domain.user.RefreshTokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,9 +22,9 @@ import java.util.UUID;
  * Filter JWT yang dijalankan sekali per request.
  * Membaca Authorization header, validasi token, lalu set authentication ke SecurityContext.
  *
- * Catatan: Filter ini TIDAK query DB — UserPrincipal di-reconstruct langsung dari JWT claims.
- * Ini adalah pendekatan stateless. Untuk validasi token yang sudah di-revoke,
- * gunakan endpoint /api/auth/refresh yang mengecek DB.
+ * Catatan: Filter ini TIDAK query DB untuk client biasa demi performa.
+ * Namun untuk role ADMIN, filter akan memvalidasi tokenId ke database (tabel refresh_token)
+ * untuk memastikan single active session berjalan (langsung menolak device lama saat device baru login).
  */
 @Slf4j
 @Component
@@ -31,6 +32,7 @@ import java.util.UUID;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -45,6 +47,19 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 UUID userId    = jwtService.extractUserId(token);
                 Role role      = jwtService.extractRole(token);
                 boolean isGuest = jwtService.extractIsGuest(token);
+
+                // Validasi single active session khusus untuk role ADMIN
+                if (role == Role.ADMIN && !isGuest) {
+                    UUID tokenId = jwtService.extractTokenId(token);
+                    if (tokenId == null || !refreshTokenRepository.existsByTokenIdAndIsRevokedFalse(tokenId)) {
+                        log.warn("Request admin {} ditolak karena session/refresh token sudah di-revoke atau tidak ditemukan", userId);
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.setCharacterEncoding("UTF-8");
+                        response.getWriter().write("{\"success\":false,\"message\":\"Autentikasi gagal: Sesi sudah di-revoke atau tidak ditemukan\",\"data\":null}");
+                        return;
+                    }
+                }
 
                 UserPrincipal principal;
                 if (isGuest) {
