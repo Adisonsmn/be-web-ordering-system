@@ -96,7 +96,7 @@ class AuthServiceImplTest {
                 new UsernamePasswordAuthenticationToken(mockPrincipal, null, mockPrincipal.getAuthorities());
 
         when(authenticationManager.authenticate(any())).thenReturn(authToken);
-        when(jwtService.generateAccessToken(any())).thenReturn("mock-access-token");
+        when(jwtService.generateAccessToken(any(), any())).thenReturn("mock-access-token");
         when(jwtService.generateRefreshToken(any())).thenReturn("mock-refresh-token");
         when(refreshTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
@@ -126,7 +126,7 @@ class AuthServiceImplTest {
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(BadCredentialsException.class);
 
-        verify(jwtService, never()).generateAccessToken(any());
+        verify(jwtService, never()).generateAccessToken(any(), any());
     }
 
     // ── Register ──────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ class AuthServiceImplTest {
             return u;
         });
         when(clientRepository.save(any(Client.class))).thenAnswer(i -> i.getArgument(0));
-        when(jwtService.generateAccessToken(any())).thenReturn("mock-access-token");
+        when(jwtService.generateAccessToken(any(), any())).thenReturn("mock-access-token");
         when(jwtService.generateRefreshToken(any())).thenReturn("mock-refresh-token");
         when(refreshTokenRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
@@ -195,7 +195,7 @@ class AuthServiceImplTest {
         RefreshTokenRequest request = new RefreshTokenRequest(rawToken);
 
         when(refreshTokenRepository.findByToken(rawToken)).thenReturn(Optional.of(storedToken));
-        when(jwtService.generateAccessToken(any())).thenReturn("new-access-token");
+        when(jwtService.generateAccessToken(any(), any())).thenReturn("new-access-token");
         when(userRepository.findById(userId)).thenReturn(Optional.of(mockUser));
         when(clientRepository.findByUser_Id(userId)).thenReturn(Optional.of(mockClient));
 
