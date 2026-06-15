@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 
 /**
@@ -42,7 +43,10 @@ public class RestoAutoCloseScheduler {
         // Hanya tutup jika sekarang sedang buka
         if (!config.isOpen()) return;
 
-        LocalTime now = LocalTime.now();
+        // Gunakan timezone WIB (Asia/Jakarta) secara eksplisit
+        // agar konsisten dengan waktu yang diinput user di frontend,
+        // terlepas dari timezone server (Azure VM default: UTC)
+        LocalTime now = LocalTime.now(ZoneId.of("Asia/Jakarta"));
         LocalTime closeTime = config.getCloseTime();
         LocalTime openTime = config.getOpenTime();
 

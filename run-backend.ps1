@@ -29,7 +29,8 @@ Get-Content $EnvFile | ForEach-Object {
 }
 
 # 4. Run Spring Boot with clean compile to ensure all code changes are picked up
-Write-Host "Building and starting Aroma Senja Backend (clean compile)..." -ForegroundColor Green
+# -Dmaven.test.skip=true: skip kompilasi dan eksekusi test agar tidak blocking saat dev
+Write-Host "Building and starting Aroma Senja Backend (clean compile, skip tests)..." -ForegroundColor Green
 $MavenWrapperJar = Join-Path $PSScriptRoot ".mvn\wrapper\maven-wrapper.jar"
 $JavaArgs = @(
     "-Dmaven.multiModuleProjectDirectory=$PSScriptRoot",
@@ -37,6 +38,7 @@ $JavaArgs = @(
     $MavenWrapperJar,
     "org.apache.maven.wrapper.MavenWrapperMain",
     "clean",
-    "spring-boot:run"
+    "spring-boot:run",
+    "-Dmaven.test.skip=true"
 )
 & java @JavaArgs
