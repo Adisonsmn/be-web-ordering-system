@@ -44,16 +44,31 @@ public class RestoAutoCloseScheduler {
 
         LocalTime now = LocalTime.now();
         LocalTime closeTime = config.getCloseTime();
+        LocalTime openTime = config.getOpenTime();
 
         if (closeTime == null) return;
 
-        // Tutup jika jam sekarang sudah melewati closeTime
-        if (now.isAfter(closeTime)) {
+        // Deteksi skenario cross-midnight: openTime > closeTime
+        // Contoh: open=23:00, close=07:00 → restoran buka melewati tengah malam
+        boolean isCrossMidnight = openTime != null && openTime.isAfter(closeTime);
+
+        boolean shouldClose;
+        if (isCrossMidnight) {
+            // Cross-midnight: restoran BUKA antara openTime s/d tengah malam DAN tengah malam s/d closeTime
+            // Harus TUTUP jika now sudah lewat closeTime DAN belum mencapai openTime
+            // Contoh: open=23:00, close=07:00 → tutup jika now berada di antara 07:00–22:59
+            shouldClose = now.isAfter(closeTime) && now.isBefore(openTime);
+        } else {
+            // Normal (tidak cross-midnight): tutup jika now sudah lewat closeTime
+            shouldClose = now.isAfter(closeTime);
+        }
+
+        if (shouldClose) {
             config.setOpen(false);
             restoConfigRepository.save(config);
 
-            log.info("Restoran otomatis ditutup karena jam tutup ({}) sudah terlewati. Jam sekarang: {}",
-                    closeTime, now);
+            log.info("Restoran otomatis ditutup karena jam tutup ({}) sudah terlewati. Jam sekarang: {} [cross-midnight={}]",
+                    closeTime, now, isCrossMidnight);
 
             // Broadcast WebSocket ke customer agar redirect ke splash "Tutup"
             try {
