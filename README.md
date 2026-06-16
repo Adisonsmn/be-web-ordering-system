@@ -3,577 +3,215 @@
 > **REST API + WebSocket Server untuk Sistem Pemesanan Mandiri Restoran berbasis QR Code**
 > Dibangun dengan Spring Boot 3, PostgreSQL (Supabase), dan STOMP WebSocket untuk update pesanan real-time.
 
----
+## About
 
-## 📋 Daftar Isi
-
-- [Tentang Project](#-tentang-project)
-- [Tech Stack](#-tech-stack)
-- [Arsitektur & Struktur Package](#-arsitektur--struktur-package)
-- [Prasyarat](#-prasyarat)
-- [Cara Menjalankan (Development)](#-cara-menjalankan-development)
-- [Environment Variables](#-environment-variables)
-- [API Endpoints](#-api-endpoints)
-- [WebSocket Events](#-websocket-events)
-- [Database & Migrasi](#-database--migrasi)
-- [Autentikasi & Otorisasi](#-autentikasi--otorisasi)
-- [Perintah yang Tersedia](#-perintah-yang-tersedia)
-- [Unit Testing](#-unit-testing)
-- [Panduan Kontribusi](#-panduan-kontribusi)
-- [Deployment](#-deployment)
+**Aroma Senja Backend** adalah REST API & WebSocket server yang melayani dua aplikasi frontend: **Customer App** (untuk pemesanan mandiri oleh pelanggan via QR Code) dan **Dashboard Admin** (untuk manajemen operasional restoran). Dibangun menggunakan Java 21 dan Spring Boot 3, backend ini mengintegrasikan Supabase PostgreSQL sebagai penyimpanan data utama, Spring Security + JWT untuk otorisasi, dan SockJS/STOMP WebSocket untuk sinkronisasi pesanan real-time antara dapur, kasir, dan pelanggan.
 
 ---
 
-## 🍽️ Tentang Project
+## Fitur
 
-**Aroma Senja Backend** adalah REST API server yang melayani dua aplikasi frontend:
+Backend Aroma Senja menyediakan fungsionalitas bisnis lengkap melalui RESTful API dan WebSocket:
 
-- **Customer App** — pelanggan pesan menu via QR Code
-- **Dashboard Admin** — operator kelola pesanan, menu, promo, meja, laporan
+- **Autentikasi & Keamanan (JWT):** Registrasi pelanggan, login admin/member/tamu (guest), serta rotasi access token dan refresh token secara stateless.
+- **Manajemen Meja & QR Code:** Mendaftarkan meja restoran, memvalidasi token QR, mengelola status meja (_occupied_/_vacant_), dan membuat tautan QR Code secara dinamis.
+- **Katalog Menu & Rekomendasi:** Menyajikan katalog makanan dan minuman yang aktif, pencarian menu, filter kategori, penentuan opsi tingkat kematangan/pedas, serta rekomendasi _pairing menu_ (saling cocok dipesan bersama).
+- **Keranjang Belanja:** Menyimpan item pesanan per sesi meja dalam database untuk menunjang keamanan data sebelum checkout.
+- **Manajemen Pesanan:** Alur pemesanan lengkap (pengurangan stok, perhitungan diskon, penggunaan poin member, snapshot harga menu saat transaksi dibuat, cetak struk digital).
+- **Real-time Event Broadcast:** Menggunakan WebSocket STOMP untuk menyiarkan pesanan baru ke dapur dan mengupdate estimasi waktu memasak ke pelanggan secara real-time.
+- **Laporan & Analitik Restoran:** Menyediakan data statistik harian (KPI penjualan), tren pendapatan berkala, menu terlaris, serta ekspor berkas laporan keuangan ke format Microsoft Excel.
+- **Loyalitas Poin:** Mengotomatiskan pemberian poin _earn_ (saat selesai belanja) dan _redeem_ (pemotongan poin untuk diskon belanja).
 
-Server juga menyediakan **WebSocket (STOMP)** untuk notifikasi real-time status pesanan antara dapur ↔ pelanggan ↔ admin.
+---
 
-### Alur Data Utama
+## Alur Data Backend
+
+Backend menangani pertukaran data secara sinkron (HTTP REST) dan asinkron (WebSocket):
 
 ```
-Pelanggan scan QR → API validasi meja → Ambil katalog menu
-    → Buat pesanan → Notifikasi WebSocket ke dapur
-    → Admin update status → Notifikasi WebSocket ke pelanggan
-    → Pesanan SERVED → Poin loyalitas di-update
+[Pelanggan Scan QR] ──> Validasi Token Meja (REST) ──> Mengambil Katalog Menu (REST)
+                                                               │
+                                                               v
+[Dapur Proses Order] <── Notifikasi Order Baru (WS) <── Pembuatan Pesanan & Potong Poin (REST)
+        │
+        ├──> Update Status & Estimasi Menit (REST)
+        │              │
+        │              v
+        └──> Kirim Update Real-time (WS) ──> [Pelanggan Memantau Status Di HP]
+                                                               │
+                                                               v
+[Poin Bertambah / Struk Cetak] <── Selesai Diantar (SERVED) ──┘
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Struktur Project
 
-| Kategori     | Teknologi                   | Versi    |
-| ------------ | --------------------------- | -------- |
-| Language     | Java                        | 21 (LTS) |
-| Framework    | Spring Boot                 | 3.3.4    |
-| Database     | PostgreSQL (Supabase)       | 15+      |
-| ORM          | Spring Data JPA + Hibernate | 6.x      |
-| Migrasi DB   | Flyway                      | 10.x     |
-| Autentikasi  | JWT (JJWT)                  | 0.12.6   |
-| Keamanan     | Spring Security             | 6.x      |
-| WebSocket    | Spring WebSocket + STOMP    | -        |
-| Mapping      | MapStruct                   | 1.6.2    |
-| Boilerplate  | Lombok                      | 1.18.46  |
-| QR Code      | ZXing (Google)              | 3.5.3    |
-| Excel Export | Apache POI                  | 5.3.0    |
-| API Docs     | SpringDoc OpenAPI (Swagger) | 2.6.0    |
-| Build Tool   | Maven Wrapper (`mvnw`)      | 3.9.9    |
-| Testing      | JUnit 5 + Mockito + H2      | -        |
-
----
-
-## 📁 Arsitektur & Struktur Package
-
-Menggunakan arsitektur **Package by Feature** dengan layer yang ketat:
+Backend menggunakan arsitektur **Package by Feature** untuk memisahkan domain bisnis agar modular, aman, dan mudah dikembangkan:
 
 ```
-Controller → Service (interface) → ServiceImpl → Repository
-```
-
-```
-src/main/java/com/aromasenja/
+aroma-senja-backend/
+├── src/main/java/com/aromasenja/
+│   ├── AromaSenjaApplication.java       # Kelas Entry Point Utama Spring Boot
+│   │
+│   ├── config/                          # Konfigurasi Global Aplikasi
+│   │   ├── SecurityConfig.java          # Spring Security, password encoder, JWT filter
+│   │   ├── WebSocketConfig.java         # Konfigurasi broker & endpoint STOMP WebSocket
+│   │   ├── CorsConfig.java              # Kebijakan asal domain yang diizinkan (CORS)
+│   │   └── RequestLoggingFilter.java    # Log performa HTTP request/response
+│   │
+│   ├── common/                          # Kelas utilitas & helper lantas domain
+│   │   ├── exception/                   # Global Exception Handler & kelas exception custom
+│   │   ├── response/                    # Standardisasi format JSON ApiResponse<T>
+│   │   └── security/                    # Utilitas JWT (JwtService, JwtAuthFilter, UserPrincipal)
+│   │
+│   ├── domain/                          # Logika Bisnis Utama (Package by Feature)
+│   │   ├── auth/                        # Registrasi, login, refresh token
+│   │   ├── meja/                        # Data meja dan enkripsi QR token
+│   │   ├── menu/                        # Katalog menu, kategori, dan pairing suggestion
+│   │   ├── keranjang/                   # Keranjang belanja per sesi pelanggan
+│   │   ├── pesanan/                     # Logika transaksi pesanan (domain terbesar)
+│   │   ├── promo/                       # Kode promo dan kalkulator diskon
+│   │   ├── rating/                      # Ulasan & penilaian bintang dari pelanggan
+│   │   └── poin/                        # Mutasi poin loyalitas member
+│   │
+│   └── notification/                    # Pengirim Event WebSocket
+│       └── NotificationService.java     # Publisher WebSocket ke admin & pelanggan
 │
-├── AromaSenjaApplication.java       # Entry point
-│
-├── config/                          # Konfigurasi global
-│   ├── SecurityConfig.java          # Spring Security & JWT filter
-│   ├── WebSocketConfig.java         # STOMP WebSocket broker
-│   ├── CorsConfig.java              # Allowed origins
-│   └── RequestLoggingFilter.java    # Log semua request/response
-│
-├── common/                          # Shared utilities lintas domain
-│   ├── exception/                   # GlobalExceptionHandler, custom exceptions
-│   ├── response/                    # ApiResponse<T> wrapper
-│   ├── security/                    # JwtService, JwtAuthFilter, UserPrincipal
-│   └── util/                        # Helper functions
-│
-├── domain/                          # Core business features
-│   ├── auth/          → Login, Register, Refresh Token, Update Profil
-│   ├── user/          → Entitas Client & Admin
-│   ├── meja/          → Manajemen meja & generate QR Code
-│   ├── menu/          → Katalog menu & pairing suggestion
-│   ├── keranjang/     → Keranjang belanja per sesi meja
-│   ├── pesanan/       → Pembuatan & manajemen pesanan (domain terbesar)
-│   ├── promo/         → Promo & diskon
-│   ├── rating/        → Ulasan & rating menu
-│   ├── poin/          → Program loyalitas poin
-│   ├── laporan/       → Statistik dashboard & export Excel
-│   └── config_resto/  → Pengaturan restoran & profil admin
-│
-└── notification/                    # WebSocket event publisher
-    ├── NotificationService.java     # Interface publish WS events
-    ├── WebSocketController.java     # Handle subscribe request dari client
-    └── payload/                     # Record classes untuk WS payload
-
-src/main/resources/
-├── application.yml                  # Konfigurasi utama + profil dev/prod
-└── db/migration/                    # Flyway migration files (V1__ - V12__)
+├── src/main/resources/
+│   ├── application.yml                  # Berkas konfigurasi utama Spring Boot
+│   └── db/migration/                    # Berkas SQL Flyway Database Migrations (V1 s.d V12)
 ```
 
 ---
 
-## ✅ Prasyarat
+## Cara Instalasi
 
-| Tools                              | Versi Minimum                    | Cek dengan         |
-| ---------------------------------- | -------------------------------- | ------------------ |
-| [JDK (Java)](https://adoptium.net) | **21** (wajib, bukan 17 atau 11) | `java -version`    |
-| [Git](https://git-scm.com)         | -                                | `git -v`           |
-| Akses PostgreSQL                   | -                                | Minta ke ketua tim |
+Ikuti langkah-langkah di bawah ini untuk menyiapkan backend di lingkungan lokal Anda:
 
-> ⚠️ **Maven tidak perlu diinstall terpisah.** Project sudah menggunakan **Maven Wrapper** (`mvnw.cmd` di Windows, `mvnw` di Linux/Mac) yang otomatis download Maven jika belum ada.
+1.  **Prasyarat Perangkat Lunak:**
+    - **JDK 21 (Java Development Kit)**: Versi 21 wajib terinstall (misalnya Eclipse Temurin LTS).
+    - **Git**: Untuk kloning kode program.
+    - _Catatan:_ Maven tidak perlu diinstall secara terpisah karena proyek sudah dilengkapi Maven Wrapper (`mvnw`).
 
-### Install JDK 21
+2.  **Kloning Kode Sumber:**
 
-Download dari [https://adoptium.net](https://adoptium.net) → pilih **Temurin 21 (LTS)**.
+    ```bash
+    git clone <url-repository-anda>
+    cd aroma-senja-backend
+    ```
 
-Setelah install, verifikasi:
+3.  **Membuat File Environment Variables (.env):**
+    Salin berkas template `.env.example` menjadi `.env`:
+    - **Windows (PowerShell):** `copy .env.example .env`
+    - **Linux/Mac:** `cp .env.example .env`
 
-```bash
-java -version
-# output harus: openjdk version "21.x.x"
-```
-
----
-
-## 🚀 Cara Menjalankan (Development)
-
-### Langkah 1 — Clone Repository
-
-```bash
-git clone https://github.com/<username>/<nama-repo>.git
-cd <nama-repo>/aroma-senja-backend
-```
-
-### Langkah 2 — Setup Environment Variables
-
-Salin file contoh:
-
-```bash
-# Windows
-copy .env.example .env
-
-# Linux/Mac
-cp .env.example .env
-```
-
-Buka file `.env` dan isi semua nilai:
-
-```env
-DATABASE_URL=jdbc:postgresql://db.xxx.supabase.co:5432/postgres?sslmode=require
-DB_USERNAME=postgres
-DB_PASSWORD=your_database_password
-JWT_SECRET=your_jwt_secret_min_32_chars_random_string
-QR_BASE_URL=http://localhost:5173/customer
-CORS_ALLOWED_ORIGINS=http://localhost:5173
-```
-
-> 📌 Nilai `DATABASE_URL`, `DB_USERNAME`, `DB_PASSWORD` minta ke ketua tim yang punya akses Supabase.
-
-### Langkah 3 — Jalankan Backend
-
-**Windows (Cara Termudah — pakai script otomatis):**
-
-```powershell
-.\run-backend.ps1
-```
-
-Script ini otomatis load `.env` dan jalankan Spring Boot.
-
-**Windows (Manual):**
-
-```powershell
-# Load env dulu secara manual, lalu:
-.\mvnw.cmd spring-boot:run
-```
-
-**Linux / Mac:**
-
-```bash
-# Export env variables dulu
-export DATABASE_URL="jdbc:postgresql://..."
-export DB_USERNAME="postgres"
-export DB_PASSWORD="..."
-export JWT_SECRET="..."
-export QR_BASE_URL="http://localhost:5173/customer"
-export CORS_ALLOWED_ORIGINS="http://localhost:5173"
-
-# Jalankan
-./mvnw spring-boot:run
-```
-
-Backend akan berjalan di: **[http://localhost:8080](http://localhost:8080)**
-
-### Langkah 4 — Verifikasi
-
-Buka browser atau Postman, akses:
-
-```
-GET http://localhost:8080/api/config
-```
-
-Harus return data konfigurasi restoran → berarti server berjalan normal.
-
-**Swagger UI (Dokumentasi API interaktif):**
-
-```
-http://localhost:8080/swagger-ui.html
-```
+4.  **Konfigurasi Database PostgreSQL (Supabase):**
+    Buka file `.env` dan masukkan informasi kredensial database Anda (lihat bagian [Environment Variable](#-environment-variable)).
 
 ---
 
-## 🔑 Environment Variables
+## Cara Menjalankan Aplikasi
 
-| Variable               | Wajib | Contoh                                                 | Deskripsi                                                        |
-| ---------------------- | ----- | ------------------------------------------------------ | ---------------------------------------------------------------- |
-| `DATABASE_URL`         | ✅    | `jdbc:postgresql://host:5432/postgres?sslmode=require` | JDBC URL ke PostgreSQL Supabase                                  |
-| `DB_USERNAME`          | ✅    | `postgres`                                             | Username database                                                |
-| `DB_PASSWORD`          | ✅    | `yourpassword`                                         | Password database                                                |
-| `JWT_SECRET`           | ✅    | `min32charsrandomsecretkey123456`                      | Secret key untuk sign JWT (min 32 karakter)                      |
-| `QR_BASE_URL`          | ✅    | `http://localhost:5173/customer`                       | Base URL yang di-embed di QR Code meja                           |
-| `CORS_ALLOWED_ORIGINS` | ✅    | `http://localhost:5173`                                | Domain frontend yang diizinkan (pisahkan koma jika lebih dari 1) |
+1.  **Menjalankan Aplikasi (Mode Development):**
+    - **Menggunakan Windows (Otomatis & Direkomendasikan):**
+      Jalankan script PowerShell berikut. Script ini akan otomatis memuat variabel lingkungan dari `.env` dan menyalakan aplikasi:
+      ```powershell
+      powershell -ExecutionPolicy Bypass -File .\run-backend.ps1
+      ```
+    - **Secara Manual (Semua OS):**
+      Ekspor terlebih dahulu variabel lingkungan dari file `.env` ke terminal Anda, lalu jalankan perintah:
 
-> 🔒 File `.env` **JANGAN di-commit ke Git** — sudah ada di `.gitignore`.
+      ```bash
+      # Menggunakan Windows CMD/PowerShell
+      .\mvnw.cmd spring-boot:run
+
+      # Menggunakan Linux/Mac Terminal
+      ./mvnw spring-boot:run
+      ```
+
+2.  **Verifikasi Kesehatan API:**
+    Buka browser Anda dan akses:
+    - Status Restoran: [http://localhost:8080/api/config](http://localhost:8080/api/config)
 
 ---
 
-## 📡 API Endpoints
+## Environment Variable
 
-Semua endpoint diawali `/api/`. Format response selalu:
+Variabel lingkungan berikut wajib dikonfigurasi pada file `.env` di folder root backend agar aplikasi dapat terhubung ke database dan mengenali token keamanan:
+
+| Variable               | Wajib | Deskripsi                                                 | Contoh Nilai                                          |
+| ---------------------- | ----- | --------------------------------------------------------- | ----------------------------------------------------- |
+| `DATABASE_URL`         | Ya    | JDBC URL koneksi database PostgreSQL                      | `jdbc:postgresql://db.xxxx.supabase.co:5432/postgres` |
+| `DB_USERNAME`          | Ya    | Username superuser database PostgreSQL                    | `postgres.xxxx`                                       |
+| `DB_PASSWORD`          | Ya    | Kata sandi akses database PostgreSQL                      | `KataSandiDatabaseAnda`                               |
+| `JWT_SECRET`           | Ya    | Kunci rahasia minimal 32 karakter untuk tanda tangan JWT  | `asfasdfwerasdfdf`                                    |
+| `QR_BASE_URL`          | Ya    | Tautan dasar web frontend yang ditanam di QR Code         | `http://localhost:5173/customer`                      |
+| `CORS_ALLOWED_ORIGINS` | Ya    | Alamat frontend yang diizinkan mengakses resource backend | `http://localhost:5173`                               |
+
+---
+
+## Anggota Tim
+
+Proyek ini dibangun oleh Kelompok Aroma Senja untuk Tugas Besar mata kuliah Pemrograman Berorientasi Objek (PBO):
+
+| Nama                       | GitHub                                             | Peran                        |
+| -------------------------- | -------------------------------------------------- | ---------------------------- |
+| **Adison Simanullang**     | [@Adisonsmn](https://github.com/Adisonsmn)         | Backend & Database Lead      |
+| **Agung Natanael Saragih** | [@agungsrgh](https://github.com/agungsrgh)         | Backend & Frontend Developer |
+| **Farhan Hamzah**          | [@farhan-hamzah](https://github.com/farhan-hamzah) | Backend & Frontend Developer |
+| **Nazal Putra**            | [@NazalDev](https://github.com/NazalDev)           | Backend & Frontend Developer |
+| **Muhammad Huttaqi**       | [@MrTakeIt](https://github.com/MrTakeIt)           | Frontend Developer           |
+
+---
+
+## API Endpoints
+
+Semua endpoint API diawali dengan `/api/`. Format respons seragam:
 
 ```json
 {
   "success": true,
-  "message": "Pesan deskriptif",
-  "data": {}
+  "message": "Pesan sukses deskriptif",
+  "data": { ... }
 }
 ```
 
-### 🔓 Public (Tidak Perlu Token)
+### Public (Tanpa Autentikasi JWT)
 
-| Method | Endpoint                   | Deskripsi                 |
-| ------ | -------------------------- | ------------------------- |
-| `POST` | `/api/auth/login`          | Login customer/admin      |
-| `POST` | `/api/auth/register`       | Registrasi pelanggan baru |
-| `POST` | `/api/auth/refresh`        | Refresh access token      |
-| `GET`  | `/api/auth/guest`          | Buat token tamu (guest)   |
-| `GET`  | `/api/menu`                | Ambil semua menu aktif    |
-| `GET`  | `/api/menu/{id}`           | Detail satu menu          |
-| `GET`  | `/api/promo`               | Promo yang sedang aktif   |
-| `GET`  | `/api/config`              | Status & info restoran    |
-| `GET`  | `/api/meja/scan/{qrToken}` | Validasi QR Code meja     |
+- `POST /api/auth/login` - Masuk log akun pelanggan/admin.
+- `POST /api/auth/register` - Pendaftaran akun pelanggan member.
+- `POST /api/auth/refresh` - Memperbarui access token JWT yang kedaluwarsa.
+- `GET /api/auth/guest` - Mendapatkan JWT sementara untuk pengguna non-member.
+- `GET /api/menu` - Mendapatkan daftar menu restoran yang tersedia.
+- `GET /api/meja/scan/{qrToken}` - Validasi keaktifan QR meja saat di-scan.
 
-### 🔐 Client (Butuh Token JWT — Role: CLIENT)
+### Client (Butuh Token JWT - Role: CLIENT)
 
-| Method   | Endpoint                    | Deskripsi                             |
-| -------- | --------------------------- | ------------------------------------- |
-| `GET`    | `/api/auth/me`              | Ambil profil sendiri                  |
-| `PUT`    | `/api/auth/me`              | Update profil (nama, telepon, avatar) |
-| `GET`    | `/api/keranjang`            | Ambil isi keranjang                   |
-| `POST`   | `/api/keranjang/items`      | Tambah item ke keranjang              |
-| `PUT`    | `/api/keranjang/items/{id}` | Update quantity item                  |
-| `DELETE` | `/api/keranjang/items/{id}` | Hapus item dari keranjang             |
-| `DELETE` | `/api/keranjang`            | Kosongkan keranjang                   |
-| `POST`   | `/api/pesanan`              | Buat pesanan baru                     |
-| `GET`    | `/api/pesanan/{id}`         | Detail pesanan milik sendiri          |
-| `GET`    | `/api/poin/balance`         | Cek saldo poin loyalitas              |
-| `POST`   | `/api/rating`               | Submit ulasan & rating                |
+- `GET /api/keranjang` - Mengambil isi keranjang belanja.
+- `POST /api/keranjang/items` - Menambahkan item makanan ke keranjang.
+- `POST /api/pesanan` - Mengirimkan pesanan belanja untuk diproses dapur.
+- `POST /api/rating` - Mengirim ulasan & bintang.
 
-### 🛡️ Admin (Butuh Token JWT — Role: ADMIN)
+### Admin (Butuh Token JWT - Role: ADMIN)
 
-| Method   | Endpoint                      | Deskripsi                          |
-| -------- | ----------------------------- | ---------------------------------- |
-| `GET`    | `/api/pesanan`                | Daftar semua pesanan (bisa filter) |
-| `PATCH`  | `/api/pesanan/{id}/status`    | Update status pesanan              |
-| `GET`    | `/api/menu`                   | Kelola menu (termasuk nonaktif)    |
-| `POST`   | `/api/menu`                   | Tambah menu baru                   |
-| `PUT`    | `/api/menu/{id}`              | Edit menu                          |
-| `DELETE` | `/api/menu/{id}`              | Hapus menu                         |
-| `PATCH`  | `/api/menu/{id}/availability` | Toggle ketersediaan menu           |
-| `GET`    | `/api/meja`                   | Daftar semua meja                  |
-| `POST`   | `/api/meja`                   | Tambah meja & generate QR          |
-| `DELETE` | `/api/meja/{id}`              | Hapus meja (soft delete)           |
-| `POST`   | `/api/promo`                  | Buat promo baru                    |
-| `PUT`    | `/api/promo/{id}`             | Edit promo                         |
-| `DELETE` | `/api/promo/{id}`             | Hapus promo                        |
-| `GET`    | `/api/laporan/stats`          | Statistik dashboard harian         |
-| `GET`    | `/api/laporan/trend`          | Tren pendapatan                    |
-| `GET`    | `/api/laporan/menu-terlaris`  | Menu paling laku                   |
-| `GET`    | `/api/laporan/export`         | Export laporan ke Excel            |
-| `GET`    | `/api/config`                 | Konfigurasi restoran               |
-| `PUT`    | `/api/config`                 | Update konfigurasi restoran        |
-
-> 📖 **Dokumentasi lengkap interaktif** tersedia di Swagger UI: `http://localhost:8080/swagger-ui.html`
+- `GET /api/pesanan` - Mengambil semua riwayat pesanan (dukungan filter status & pagination).
+- `PATCH /api/pesanan/{id}/status` - Mengubah status pesanan di dapur/kasir.
+- `POST /api/menu` - CRUD item menu baru.
+- `POST /api/promo` - Membuat promo baru.
+- `GET /api/laporan/stats` - Statistik KPI laporan harian/bulanan.
+- `GET /api/laporan/export` - Ekspor laporan keuangan ke berkas `.xlsx`.
 
 ---
 
-## 📡 WebSocket Events
+## WebSocket Events
 
-Koneksi WebSocket: `ws://localhost:8080/ws` (via SockJS)
+WebSocket server beroperasi di alamat `ws://localhost:8080/ws` menggunakan protokol STOMP:
 
-| Trigger (REST)           | Topic yang Dipublish           | Penerima        | Payload                     |
-| ------------------------ | ------------------------------ | --------------- | --------------------------- |
-| Pesanan baru dibuat      | `/topic/admin/pesanan-baru`    | Admin dashboard | `PesananBaruWsPayload`      |
-| Pesanan baru (meja)      | `/topic/admin/meja-status`     | Admin dashboard | `MejaStatusWsPayload`       |
-| Status pesanan diupdate  | `/topic/pesanan/{pesananId}`   | Pelanggan       | `PesananStatusWsPayload`    |
-| Toggle ketersediaan menu | `/topic/menu/availability`     | Pelanggan       | `MenuAvailabilityWsPayload` |
-| Toggle buka/tutup resto  | `/topic/resto/status`          | Pelanggan       | `RestoStatusWsPayload`      |
-| Pesanan SERVED           | `/topic/admin/dashboard-stats` | Admin dashboard | `DashboardStatsWsPayload`   |
-
----
-
-## 🗄️ Database & Migrasi
-
-Database menggunakan **PostgreSQL via Supabase**. Semua perubahan schema dikelola oleh **Flyway** — berjalan otomatis saat server startup.
-
-### File Migrasi (`src/main/resources/db/migration/`)
-
-| File                                 | Isi                                          |
-| ------------------------------------ | -------------------------------------------- |
-| `V1__init_schema.sql`                | Schema awal semua tabel                      |
-| `V2__seed_data.sql`                  | Data awal (menu, meja, admin, config)        |
-| `V4__add_optimistic_locking.sql`     | Tambah kolom `version` untuk optimistic lock |
-| `V5__fix_admin_password.sql`         | Update hash password admin                   |
-| `V6__add_refund_to_poin_tipe.sql`    | Tambah tipe REFUND di poin transaksi         |
-| `V7__seed_client.sql`                | Data pelanggan contoh                        |
-| `V8__add_spice_doneness_options.sql` | Opsi level pedas & kematangan menu           |
-| `V9__allow_guest_rating.sql`         | Izinkan guest submit rating                  |
-| `V10__add_usage_to_promo.sql`        | Kolom usage count di promo                   |
-| `V11__add_unique_kode_pesanan.sql`   | Unique constraint kode pesanan               |
-| `V12__add_meja_session.sql`          | Tabel sesi meja untuk QR token               |
-
-### ⚠️ Aturan Migrasi
-
-- **JANGAN edit** file migrasi yang sudah pernah dijalankan
-- Untuk perubahan schema → selalu buat **file baru** dengan nomor versi berikutnya
-- Format nama: `V{nomor}__{deskripsi_singkat}.sql`
-
----
-
-## 🔐 Autentikasi & Otorisasi
-
-### JWT Token
-
-| Token         | Masa Berlaku | Deskripsi                                         |
-| ------------- | ------------ | ------------------------------------------------- |
-| Access Token  | 15 menit     | Dikirim di header `Authorization: Bearer <token>` |
-| Refresh Token | 7 hari       | Dipakai untuk minta access token baru             |
-
-### Role
-
-| Role     | Akses                                                      |
-| -------- | ---------------------------------------------------------- |
-| `ADMIN`  | Semua endpoint dashboard & manajemen                       |
-| `CLIENT` | Endpoint customer (pesanan, keranjang, poin milik sendiri) |
-| `PUBLIC` | Endpoint tanpa token (katalog, config, scan QR)            |
-| Guest    | JWT CLIENT dengan flag `isGuest: true`                     |
-
-### Cara Gunakan di Request
-
-```http
-GET /api/auth/me
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
----
-
-## 📦 Perintah yang Tersedia
-
-### Windows
-
-```powershell
-# Cara termudah — jalankan dengan load .env otomatis
-.\run-backend.ps1
-
-# Jalankan tanpa clean (lebih cepat, skip recompile)
-.\mvnw.cmd spring-boot:run
-
-# Build JAR production
-.\mvnw.cmd clean package -DskipTests
-
-# Jalankan semua unit test
-.\mvnw.cmd clean test
-
-# Compile saja (cek error tanpa run)
-.\mvnw.cmd compile
-```
-
-### Linux / Mac
-
-```bash
-# Jalankan
-./mvnw spring-boot:run
-
-# Build JAR production
-./mvnw clean package -DskipTests
-
-# Jalankan semua unit test
-./mvnw clean test
-```
-
----
-
-## 🧪 Unit Testing
-
-Project memiliki **151 unit test** yang mencakup semua domain, menggunakan JUnit 5 + Mockito + H2 (in-memory DB).
-
-```bash
-# Jalankan semua test
-.\mvnw.cmd clean test
-
-# Hasil yang diharapkan:
-# Tests run: 151, Failures: 0, Errors: 0, Skipped: 0
-# BUILD SUCCESS
-```
-
-### Coverage Test per Domain
-
-| Domain       | Controller Test | Service Test |
-| ------------ | --------------- | ------------ |
-| auth         | ✅              | ✅           |
-| config_resto | ✅              | ✅           |
-| keranjang    | ✅              | ✅           |
-| laporan      | ✅              | ✅           |
-| meja         | ✅              | ✅           |
-| menu         | ✅              | ✅           |
-| pesanan      | ✅              | ✅           |
-| poin         | ✅              | ✅           |
-| promo        | ✅              | ✅           |
-| rating       | ✅              | ✅           |
-| user         | -               | ✅           |
-| notification | ✅ (WebSocket)  | -            |
-
----
-
-## 🤝 Panduan Kontribusi
-
-### 1. Selalu Pull Sebelum Mulai
-
-```bash
-git pull origin main
-```
-
-### 2. Buat Branch untuk Setiap Fitur/Fix
-
-```bash
-git checkout -b feat/nama-fitur
-git checkout -b fix/nama-bug
-```
-
-### 3. Format Commit
-
-```bash
-git commit -m "feat: tambah endpoint GET /api/laporan/trend"
-git commit -m "fix: perbaiki NullPointerException di PesananService"
-git commit -m "refactor: pisah logika validasi ke helper class"
-git commit -m "test: tambah unit test untuk RatingService"
-```
-
-### 4. Pastikan Test Lulus Sebelum Push
-
-```bash
-.\mvnw.cmd clean test
-# BUILD SUCCESS — boleh push
-```
-
-### 5. Konvensi Kode Penting
-
-**Layer architecture (wajib diikuti):**
-
-```
-Controller → memanggil Service (interface)
-ServiceImpl → berisi logika bisnis
-Repository → akses database
-```
-
-**Wajib pakai `@Transactional` di ServiceImpl:**
-
-```java
-@Transactional                    // untuk write operations
-@Transactional(readOnly = true)   // untuk read operations
-```
-
-**Selalu wrap response dengan `ApiResponse<T>`:**
-
-```java
-return ResponseEntity.ok(
-    ApiResponse.success("Berhasil", data)
-);
-```
-
-**Gunakan constructor injection (`@RequiredArgsConstructor`), bukan `@Autowired`:**
-
-```java
-@RequiredArgsConstructor
-public class MenuServiceImpl {
-    private final MenuRepository menuRepository;  // ✅
-
-    // ❌ Jangan:
-    // @Autowired
-    // private MenuRepository menuRepository;
-}
-```
-
----
-
-## 🚢 Deployment
-
-Backend di-deploy sebagai **JAR executable** ke server Azure (production).
-
-### Build JAR
-
-```bash
-.\mvnw.cmd clean package -DskipTests
-# Output: target/aroma-senja-backend-0.0.1-SNAPSHOT.jar
-```
-
-### Jalankan JAR di Server
-
-```bash
-java -jar target/aroma-senja-backend-0.0.1-SNAPSHOT.jar \
-  --spring.profiles.active=prod \
-  --DATABASE_URL=jdbc:postgresql://... \
-  --DB_USERNAME=postgres \
-  --DB_PASSWORD=... \
-  --JWT_SECRET=...
-```
-
-### Environment Variables Production
-
-Pastikan semua variabel di `.env.example` sudah di-set di server. Tambahan untuk production:
-
-```bash
-# Profil aktif
-SPRING_PROFILES_ACTIVE=prod
-
-# CORS — domain frontend production
-CORS_ALLOWED_ORIGINS=https://aroma-senja.vercel.app
-
-# QR Code URL — domain production
-QR_BASE_URL=https://aroma-senja.vercel.app/customer
-```
-
-> Di production, **Swagger UI dinonaktifkan** otomatis (sudah dikonfigurasi di `application.yml` profil `prod`).
-
----
-
-## 👥 Tim Pengembang
-
-| Nama                   | GitHub                                             | Role         |
-| ---------------------- | -------------------------------------------------- | ------------ |
-| Adison Simanullang     | _(isi username)_                                   | Backend Lead |
-| Agung Natanael Saragih | [@agungsrgh](https://github.com/agungsrgh)         | Backend Dev  |
-| Farhan Hamzah          | [@farhan-hamzah](https://github.com/farhan-hamzah) | Backend Dev  |
-| Nazal Putra P. D.      | [@NazalDev](https://github.com/NazalDev)           | Backend Dev  |
-
----
-
-## 📝 Lisensi
-
-Project ini dibuat untuk keperluan **Tugas Besar mata kuliah Pemrograman Berbasis Objek (PBO)** — Semester 4.
+- `/topic/admin/pesanan-baru` - Broadcaster pesanan baru masuk ke admin.
+- `/topic/pesanan/{pesananId}` - Mengirimkan update status pesanan real-time ke pelanggan spesifik.
+- `/topic/menu/availability` - Siaran perubahan ketersediaan stok menu ke seluruh pelanggan.
+- `/topic/resto/status` - Siaran status operasional resto (buka/tutup) ke seluruh pelanggan.
 
 ---
 
