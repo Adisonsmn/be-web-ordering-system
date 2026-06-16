@@ -161,7 +161,7 @@ Proyek ini dibangun oleh Kelompok Aroma Senja untuk Tugas Besar mata kuliah Pemr
 | **Agung Natanael Saragih** | [@agungsrgh](https://github.com/agungsrgh)         | Backend & Frontend Developer |
 | **Farhan Hamzah**          | [@farhan-hamzah](https://github.com/farhan-hamzah) | Backend & Frontend Developer |
 | **Nazal Putra**            | [@NazalDev](https://github.com/NazalDev)           | Backend & Frontend Developer |
-| **Muhammad Huttaqi**       | [@MrTakeIt](https://github.com/MrTakeIt)           | Frontend Developer           |
+| **Muhammad Huttaqi**       | [@MrTakeIt](https://github.com/MrTakeIt)           | Backend & Frontend Developer |
 
 ---
 
