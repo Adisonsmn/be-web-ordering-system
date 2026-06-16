@@ -29,7 +29,7 @@ public class RatingController {
 
     @PostMapping
     @Operation(summary = "Submit rating & ulasan ulasan baru (Public)")
-    public ResponseEntity<ApiResponse<RatingResponse>> Rating(
+    public ResponseEntity<ApiResponse<RatingResponse>> submitRating(
             @Valid @RequestBody CreateRatingRequest request,
             @AuthenticationPrincipal UserPrincipal currentUser) {
         RatingResponse response = ratingService.submitRating(request, currentUser);
