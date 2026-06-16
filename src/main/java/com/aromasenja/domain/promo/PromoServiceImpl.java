@@ -105,7 +105,7 @@ public class PromoServiceImpl implements PromoService {
                 .orElseThrow(() -> new ResourceNotFoundException("Promo tidak ditemukan"));
 
         // 1. Lepaskan promo dari semua menu yang masih menggunakannya (clear FK)
-        menuRepository.clearPromoFromMenus(promoId);
+        menuRepository.PromoFromMenus(promoId);
         log.info("Promo {} dilepaskan dari semua menu sebelum dihapus", promoId);
 
         // 2. Hard delete — hapus record promo secara permanen
